@@ -1,0 +1,8 @@
+dist/
+artifacts/
+runtime/
+contracts/out/
+contracts/cache/
+.env
+.env.*
+!.env.example

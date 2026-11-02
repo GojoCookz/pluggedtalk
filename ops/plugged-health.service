@@ -1,0 +1,16 @@
+[Unit]
+Description=Plugged external HTTPS availability probe
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=plugged
+Group=plugged
+WorkingDirectory=/opt/plugged/current
+EnvironmentFile=/etc/plugged/service.env
+ExecStart=/opt/bun/bin/bun --no-env-file --no-install tools/operations-health.mjs
+TimeoutStartSec=25
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

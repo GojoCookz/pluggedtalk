@@ -1,0 +1,43 @@
+[Unit]
+Description=Plugged Bun application (one instance per SQLite database)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=plugged
+Group=plugged
+WorkingDirectory=/opt/plugged/current
+EnvironmentFile=/etc/plugged/service.env
+EnvironmentFile=/etc/plugged/secrets.env
+ExecStartPre=/opt/bun/bin/bun --no-env-file --no-install tools/operations-preflight.mjs --mode production
+ExecStart=/opt/bun/bin/bun --no-env-file --no-install server.bundle.js
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=45
+KillMode=mixed
+UMask=0077
+StateDirectory=plugged
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/plugged
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=plugged
+
+[Install]
+WantedBy=multi-user.target

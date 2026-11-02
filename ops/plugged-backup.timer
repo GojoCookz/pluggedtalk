@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly Plugged database backup (off-host copy still required)
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=60
+Persistent=true
+Unit=plugged-backup.service
+
+[Install]
+WantedBy=timers.target

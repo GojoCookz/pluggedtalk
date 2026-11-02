@@ -1,0 +1,18 @@
+[Unit]
+Description=Plugged consistent SQLite backup and restore drill
+After=plugged.service
+
+[Service]
+Type=oneshot
+User=plugged
+Group=plugged
+WorkingDirectory=/opt/plugged/current
+EnvironmentFile=/etc/plugged/service.env
+ExecStart=/opt/bun/bin/bun --no-env-file --no-install tools/operations-backup-job.mjs
+TimeoutStartSec=30min
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/plugged /var/backups/plugged

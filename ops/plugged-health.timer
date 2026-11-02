@@ -1,0 +1,10 @@
+[Unit]
+Description=Probe Plugged HTTPS availability every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=plugged-health.service
+
+[Install]
+WantedBy=timers.target

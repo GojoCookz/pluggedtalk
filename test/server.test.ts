@@ -1,0 +1,27 @@
+import { beforeAll, afterAll, test, expect } from 'bun:test';
+import { createPlatformServer } from '../server.ts';
+const platform=createPlatformServer({dbPath:':memory:',launchEnabled:false,programsEnabled:false});
+const {server}=platform;
+let base:string;
+beforeAll(async()=>{await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));const address=server.address();base=`http://127.0.0.1:${typeof address==='object'&&address?address.port:0}`;});
+afterAll(()=>platform.shutdown());
+test('health is process liveness, not a production readiness claim',async()=>{const response=await fetch(base+'/api/health');expect(response.status).toBe(200);const health=await response.json();expect(health.status).toBe('ok');expect(health.scope).toBe('process-liveness');expect(health.ready).toBeUndefined();expect(Number.isFinite(Date.parse(health.startedAt))).toBe(true);});
+test('config cannot enable production transactions or referral program',async()=>{const response=await fetch(base+'/api/config');expect(response.status).toBe(200);const config=await response.json();expect(config.launchEnabled).toBe(false);expect(config.policy.referralsEnabled).toBe(false);});
+test('discovery contains no Carbon launches or borrowed tokens',async()=>{const response=await fetch(base+'/api/markets');const data=await response.json();expect(data.source).toBe('plugged');expect(data.status).toBe('ready');expect(data.tokens).toEqual([]);});
+test('catalog contains issuer stocks and separate pool evidence',async()=>{const data=await(await fetch(base+'/api/assets')).json();expect(data.chainId).toBe(4663);expect(data.coverage.issuerAssets).toBeGreaterThan(0);expect(data.coverage.wormholeComplete).toBe(false);expect(data.assets.some(a=>a.issuerListed)).toBe(true);});
+test('Pons presets preserve exact amounts and snapshot provenance',async()=>{const response=await fetch(base+'/api/pons-reference');const data=await response.json();expect(response.status).toBe(200);expect(data.assets).toHaveLength(85);expect(data.native.phantomQuote).toBe('1680000000000000000');expect(data.observations.factory.blockNumber).toBe('102120191');expect(data.liveConfiguration.protocolShareBps).toBe(3000);});
+test('private project files are never served',async()=>{for(const path of ['/server.ts','/.env','/PRODUCT.md','/../package.json','/lib/config.mjs'])expect((await fetch(base+path)).status).toBe(404);});
+test('invalid JSON receives 400 rather than server error',async()=>{expect((await fetch(base+'/api/plans/validate',{method:'POST',headers:{'content-type':'application/json'},body:'{'})).status).toBe(400);});
+test('oversized draft receives 413',async()=>{expect((await fetch(base+'/api/plans/validate',{method:'POST',headers:{'content-type':'application/json'},body:'x'.repeat(32001)})).status).toBe(413);});
+test('invalid plans receive 422',async()=>{const response=await fetch(base+'/api/plans/validate',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});expect(response.status).toBe(422);expect((await response.json()).ok).toBe(false);});
+test('unsupported write method rejected',async()=>{expect((await fetch(base+'/api/config',{method:'DELETE'})).status).toBe(405);});
+test('legacy eligibility removed; social integrations do not block launch MVP',async()=>{expect((await fetch(base+'/api/quotes')).status).toBe(404);const r=await(await fetch(base+'/api/readiness')).json();expect(r.ready).toBe(false);expect(r.openingMarketCapUsd).toBe('2500');expect(r.blockers).toContain('PLUGGED_LAUNCH_ENABLED');expect(r.blockers).not.toContain('SOCIAL_OWNER_ONBOARDING_E2E');expect(r.pairs.configured).toBe(469);expect(r.postMvp.blockers).toContain('SOCIAL_OWNER_ONBOARDING_E2E');});
+test('route rejects invalid amount before making provider call',async()=>{expect((await fetch(base+'/api/routes/quote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({account:'0x1111111111111111111111111111111111111111',quote:'0x0000000000000000000000000000000000000000',amountEth:'-1'})})).status).toBe(422);});
+test('recipient resolver requires JSON and never invents a wallet without configuration',async()=>{expect((await fetch(base+'/api/recipients/resolve',{method:'POST',body:'kind=x'})).status).toBe(415);if(!process.env.BAGS_API_KEY){const response=await fetch(base+'/api/recipients/resolve',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind:'x',username:'fixture'})});expect(response.status).toBe(503);}});
+test('launch preparation refuses unresolved profiles and reports deployment blockers for valid wallets',async()=>{
+  const p={name:'Prepare fixture',symbol:'PREP',description:'',website:'',github:'',quote:'0x0000000000000000000000000000000000000000',chainId:4663,maxWalletBps:300,holderBps:0,recipients:[{kind:'x',username:'fixture',bps:10000}]};
+  const send=plan=>fetch(base+'/api/plans/prepare',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(plan)});
+  expect((await send(p)).status).toBe(422);
+  const response=await send({...p,recipients:[{address:'0x1111111111111111111111111111111111111111',bps:10000}]});expect(response.status).toBe(200);
+  const data=await response.json();expect(data.ready).toBe(false);expect(data.recipients.claimers).toHaveLength(1);expect(data.plan.economics.openingMarketCapUsd).toBe('2500');
+});

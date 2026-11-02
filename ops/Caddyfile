@@ -1,0 +1,23 @@
+{
+  # Set these in Caddy's own environment, not in the application's secrets file.
+  email {$PLUGGED_ACME_EMAIL}
+}
+
+{$PLUGGED_DOMAIN} {
+  encode zstd gzip
+  # Caddy manages the certificate and redirects HTTP to HTTPS.
+  # No file_server: runtime, environment files, source and backups are never served.
+  reverse_proxy 127.0.0.1:4317 {
+    header_up Host {http.request.host}
+    header_up X-Forwarded-Host {http.request.host}
+    transport http {
+      dial_timeout 5s
+      response_header_timeout 30s
+    }
+  }
+  header Strict-Transport-Security "max-age=31536000"
+  log {
+    output stdout
+    format json
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "engine": "carbon-baseline-v1",
+  "status": "template",
+  "chainId": 4663,
+  "independent": true,
+  "ownerAddress": "",
+  "platformRecipientAddress": "",
+  "platformVolumeBps": 100,
+  "maxFeeBps": 1000,
+  "deployment": {},
+  "hashes": {}
+}

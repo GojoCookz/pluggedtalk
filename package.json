@@ -1,0 +1,12 @@
+{
+  "name": "plugged",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run tools/build.mjs",
+    "start": "bun run server.ts",
+    "test": "bun test test/",
+    "index-assets": "bun run tools/index-assets.mjs"
+  }
+}

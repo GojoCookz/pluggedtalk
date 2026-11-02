@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#087b46">
+  <meta name="description" content="Plugged — launch, trade and read rewards on Robinhood Chain with your own wallet.">
+  <title>Plugged · Robinhood launchpad</title>
+  <link rel="icon" href="/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+<!-- THESIS: Coins first, with an understandable route from trading fees to people.
+OWN-WORLD: Brief-pinned white/green iOS-clear controls; rounded native typography and compact market cards.
+STORY: Discover real Carbon ecosystem markets, then plan a new Plugged token with explicit recipients.
+FIRST VIEWPORT: Compact identity bar, market/source tabs, search and coins; desktop has a fee-information rail, mobile a bottom task bar.
+FORM: User-pinned early pump / Bags / iOS direction overrides seed 5ca6d675. The fee receipt, not a promotional hero, is the signature.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance -->
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="#discover" aria-label="Plugged home"><img src="/mark.svg" width="36" height="36" alt=""><span>plugged<span class="brand-dot">.</span></span></a>
+    <nav class="desktop-nav" aria-label="Primary"></nav>
+    <div class="preferences">
+      <label class="sr-only" for="language">Language</label>
+      <select id="language"><option value="en">English</option><option value="es">Español</option></select>
+      <button id="theme" class="icon-button" aria-label="Switch to dark mode"></button>
+      <button id="wallet" class="wallet-button">Connect wallet</button>
+    </div>
+  </header>
+  <div class="network-strip" role="region" aria-label="Network status"><span class="network-dot" aria-hidden="true"></span><span id="network-label">Robinhood Chain</span><span id="build-label">Wallet-signed transactions</span></div>
+  <main id="main" tabindex="-1"></main>
+  <nav class="mobile-nav" aria-label="Mobile"></nav>
+  <section id="notifications" aria-label="Notifications"><div id="notice" role="status" aria-live="polite" hidden></div></section>
+  <dialog id="wallet-dialog" aria-labelledby="wallet-title"><div class="dialog-heading"><h2 id="wallet-title">Choose a wallet</h2><button id="close-wallet" class="icon-button" aria-label="Close wallet chooser"></button></div><div id="wallet-options"></div></dialog>
+</body>
+</html>

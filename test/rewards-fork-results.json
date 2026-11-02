@@ -1,0 +1,49 @@
+{
+  "chainId": 4663,
+  "blockNumber": "102763698",
+  "blockHash": "0x0927ade8b58e12ba6d2be4a08c271bbcd4d6400f0b38a225da99c50ae37a5b49",
+  "rpc": "https://rpc.mainnet.chain.robinhood.com",
+  "foundryVersion": "1.5.1-stable b0a9dd9ceda36f63e2326ce530c10e6916f4b8a2",
+  "solcVersion": "0.8.26",
+  "evmVersion": "cancun",
+  "passed": 4,
+  "failed": 0,
+  "skipped": 0,
+  "creatorBps": 5000,
+  "buyFeeBps": 200,
+  "sellFeeBps": 400,
+  "amountUnit": "raw pair-token base units",
+  "USDG": {
+    "decimals": 6,
+    "pendingFees": "40056",
+    "creatorPaidOnSweep": "9964",
+    "holderDistributorFunded": "9964",
+    "platformPaid": "19928",
+    "sweepBounty": "200",
+    "holderWithdrawn": "9962"
+  },
+  "WETH": {
+    "decimals": 18,
+    "pendingFees": "17835962651494",
+    "creatorPaidOnSweep": "4436695709559",
+    "holderDistributorFunded": "4436695709560",
+    "platformPaid": "8873391419118",
+    "sweepBounty": "89179813257",
+    "holderWithdrawn": "4436695709558"
+  },
+  "deferredClaimSupported": false,
+  "hookCodeHash": "0x0624c28bbdbd8b85633cca28a56ec5befdee09780564ad8179fc1dc6ca14bb62",
+  "poolConfigReturnBytes": 448,
+  "poolConfigOutputOrder": [
+    "address distributor", "address pairCurrency", "uint16 feeBps", "address creator",
+    "uint16 creatorBps", "bool configured", "uint16 sellFeeBps", "uint16 burnBps",
+    "uint16 platformShareBps", "uint16 sellPlatformShareBps", "uint32 openingFeeEndsAt",
+    "uint32 openingWindow", "uint16 openingFeeBps", "address rewardCurrency"
+  ],
+  "absentSelectors": {
+    "claimStuckFees(address)": "0x587e6b35",
+    "stuckFeesOf(address,address)": "0xae39406b",
+    "stuckFees(address,address)": "0x591db1d8",
+    "stuckTotal(address)": "0xacf07e56"
+  }
+}

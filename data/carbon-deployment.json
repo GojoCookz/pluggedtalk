@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-10-31T03:17:30.000Z",
+  "blockNumber": "102242583",
+  "deployment": {
+    "chainId": 4663,
+    "launcher": "0xcc491f9962ca5545163ac425210b69e24ac29a96",
+    "pairRegistry": "0xdff0a6ffd11eb1494e8a57dd5ef92b23122baec0",
+    "feeHook": "0xdc0244274f0b4e60ec4433bfa9d3ff0632caa0cc",
+    "tradeRouter": "0xd6edcd3cc28c40b42d6fe31b054ebb93a944a3a6",
+    "poolManager": "0x8366a39cc670b4001a1121b8f6a443a643e40951"
+  },
+  "hashes": {
+    "launcher": {
+      "address": "0xcc491f9962ca5545163ac425210b69e24ac29a96",
+      "codeHash": "0x7bea165b15ee48f58180d7865c9026cc37a0b5f7d03d8bbbc172a2bafeb5c135",
+      "codeBytes": 18532
+    },
+    "pairRegistry": {
+      "address": "0xdff0a6ffd11eb1494e8a57dd5ef92b23122baec0",
+      "codeHash": "0xd3848e14f3c283c2f6360b20ef96fccc0acdfd6d4e7f8b2117dac2f639e1e741",
+      "codeBytes": 3259
+    },
+    "feeHook": {
+      "address": "0xdc0244274f0b4e60ec4433bfa9d3ff0632caa0cc",
+      "codeHash": "0x0624c28bbdbd8b85633cca28a56ec5befdee09780564ad8179fc1dc6ca14bb62",
+      "codeBytes": 15457
+    },
+    "tradeRouter": {
+      "address": "0xd6edcd3cc28c40b42d6fe31b054ebb93a944a3a6",
+      "codeHash": "0x67867a85f9694ba856fa05c374f588fb2b293127c5576424d7e35dc09f9b3246",
+      "codeBytes": 2968
+    },
+    "poolManager": {
+      "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "codeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+      "codeBytes": 24009
+    },
+    "tokenImplementation": {
+      "address": "0x9199b12d5abf3488bb2160fbfef4e552d3d9ca34",
+      "codeHash": "0xc7c8fb236e96f1a1eb2821db5c61b79ee5e4a761000cee281fa924cd52a82433",
+      "codeBytes": 11307
+    }
+  },
+  "platformVolumeBps": 100,
+  "maxFeeBps": 1000,
+  "platformRecipient": "0x6E87800BEDf09ddA439Ae78c820c58427Ca57947"
+}
