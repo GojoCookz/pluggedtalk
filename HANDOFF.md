@@ -42,7 +42,7 @@ pipe launch timed out on 2026-11-03 while Node launched in 343 ms (measured).
 | ETH funding | LI.FI native-to-ERC20 route, calldata decoded and bound; **new:** output must be within 5% of the on-chain ETH/USDG v4 pool (USDG) or 1:1 (WETH) |
 | Trading | Quotes, exact approvals, buy/sell, replacement/cancel recovery with compare-and-set status writes |
 | Rewards, programs, fee vault, media, advanced launch | Service + UI connected with honest "unavailable" states; nothing deployed, so they fail closed |
-| UI | Light/dark, English/Spanish, 0 AccessLint findings on 13 audited states, mobile 390 px |
+| UI | Light/dark, 13 languages (see `workstreams/i18n.md`), 0 AccessLint findings on 13 audited states, mobile 390 px |
 | Ops | systemd units (hardened), Caddy, backup/restore drill, preflight, health probe |
 
 Activation still needs: Carbon registry owner approvals for 438 of 469 pairs, deployed and
@@ -107,7 +107,7 @@ The server never needs or accepts a wallet private key. Users sign in their own 
 - **Batching**: approvals and trades are separate wallet prompts. EIP-5792 batching and Permit2
   need a server batch type and a new router respectively (see standards doc).
 - **Finality**: "confirmed" means two blocks after the receipt (sequencer soft finality), not L1 finality.
-- **Languages**: only English and Spanish. The 13-locale work is not done (see `PLATFORM-STATUS.md`).
+- **Languages**: 13 locales at 100% key coverage, written by the agent; have native speakers review copy before marketing in a locale. Browser-drawn file-input text follows the browser language.
 - **Hosting**: systemd hardening is verified by `systemd-analyze verify` and tests, not on a real host.
   Linux signal-driven shutdown is unvalidated.
 - **No external audit.** The 2026-11-02 review is a single internal pass without Slither or coverage.

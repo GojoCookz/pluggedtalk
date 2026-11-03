@@ -1,7 +1,9 @@
 import { afterEach, expect, test } from 'bun:test';
 import { FEE_VAULT_ABI, FeeVaultService, feeVaultManifestFromEnv } from '../lib/fee-vault-service.mjs';
 import { decodeFunctionData, keccak256, zeroAddress } from '../../app/node_modules/viem/_esm/index.js';
-import { serverError } from '../web/i18n.js';
+import { serverError, registerLocale } from '../web/i18n.js';
+import es from '../web/locales/es.js';
+registerLocale('es', es);
 import { createPlatformServer } from '../server.ts';
 
 const account = '0x1111111111111111111111111111111111111111';

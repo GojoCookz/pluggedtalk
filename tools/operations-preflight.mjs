@@ -2,6 +2,7 @@ import { accessSync, constants, lstatSync, realpathSync, readFileSync } from 'no
 import { isAbsolute, resolve, relative, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { argumentsFor, cli, exists } from './operations-sqlite.mjs';
+import { LOCALE_CODES } from '../lib/locales.mjs';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
 function within(parent, child) {
@@ -23,6 +24,7 @@ export function preflight({ directory = root, env = process.env, mode = 'release
   directory = realpathSync(directory);
   check('bun-version', Bun.version === '1.3.9', 'Validated runtime is Bun 1.3.9; requalify before changing the pin.');
   for (const name of ['server.bundle.js', 'dist/index.html', 'dist/app.js', 'dist/style.css', 'dist/mark.svg', 'package.json',
+    ...LOCALE_CODES.filter(code => code !== 'en').map(code => `dist/locales/${code}.js`),
     'tools/backup-sqlite.mjs', 'tools/restore-sqlite.mjs', 'tools/operations-sqlite.mjs',
     'tools/operations-preflight.mjs', 'tools/operations-health.mjs', 'tools/operations-backup-job.mjs',
     'tools/operations-clean-install.mjs', 'ops/plugged.service', 'ops/Caddyfile',

@@ -29,7 +29,7 @@ to enable the wallet-signed launch flow. Social integration is not required for 
 - Separate searchable quote catalog: 203 issuer stock addresses, 31 Carbon quote references,
   357 LI.FI entries, 469 unique assets and 365 observed pools in the current snapshot.
   Code/decimals and provenance are distinct from bridge authenticity and launch approval.
-- Light/dark themes, English/Spanish, mobile navigation and EIP-6963/injected wallet
+- Light/dark themes, 13 languages (`web/locales/`), mobile navigation and EIP-6963/injected wallet
   address connection. There are no signature, approval or transaction requests.
 - Validated local drafts, independent draft identities, editing/deleting, JSON export,
   recipient allocations up to 100 wallets or X/GitHub profiles, complementary developer/community reward

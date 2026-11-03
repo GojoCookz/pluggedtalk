@@ -33,7 +33,7 @@ Entry point for Merc: `HANDOFF.md`. Thread: https://discord.com/channels/1530362
 | Audit M2, L5, L6, L9, L10 | Fixed with tests (see audit Fix status) |
 | Audit L-2 on a 4663 fork | Not run; 32M max tx gas measured on 4663, launch measured 19.6M on Anvil |
 | EIP-5792 batching, Permit2 | Deferred with reasons (standards doc section 4) |
-| Languages (13 locales) | **Not done.** UI remains English + Spanish. ~544 inline string pairs plus the `web/i18n.js` table must move to keyed per-locale files and be translated into 11 more languages; deferred so the handoff could be verified on a memory-constrained host |
+| Languages (13 locales) | **Done.** en, es, pt-BR, fr, de, zh-CN, ja, ko, tr, vi, ru, hi, id; 913 keys, 100% coverage each, English fallback. Keyed files in `web/locales/`, lazy-loaded per locale; native-name picker, persisted choice, `<html lang/dir>`, first visit follows `navigator.languages`. 108 browser runs (9 routes x 2 viewports x en/es/de/ja/zh-CN/hi): AccessLint 0, overflow 0, console errors 0. Details: `workstreams/i18n.md` |
 | Package | See "Handoff package" below |
 
 ### Handoff package

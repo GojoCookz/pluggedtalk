@@ -5,11 +5,12 @@ import {readFile} from 'node:fs/promises';
 import {MediaService,createPinataProvider} from '../lib/media-service.mjs';
 import {ProgramService} from '../lib/program-service.mjs';
 import {ProgramStore} from '../lib/program-service-store.mjs';
+import {LOCALE_CODES} from '../lib/locales.mjs';
 
 const media=new MediaService({provider:createPinataProvider({jwt:''})});
 const store=new ProgramStore(':memory:');
 const programs=new ProgramService({manifest:[],enabled:false,store});
-const files=new Map([['/','index.html'],['/index.html','index.html'],['/app.js','app.js'],['/style.css','style.css'],['/mark.svg','mark.svg']]);
+const files=new Map([['/','index.html'],['/index.html','index.html'],['/app.js','app.js'],['/style.css','style.css'],['/mark.svg','mark.svg'],...LOCALE_CODES.filter(c=>c!=='en').map(c=>[`/locales/${c}.js`,`locales/${c}.js`])]);
 const types={html:'text/html; charset=utf-8',js:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',svg:'image/svg+xml'};
 const server=createServer(async(req,res)=>{
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://dexscreener.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");

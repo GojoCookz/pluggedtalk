@@ -1,62 +1,14 @@
+import { translate } from './i18n.js';
 // Operate mode: inherit Plugged's field/actions/receipt styles. A local preview leads
 // to one explicit upload action; only a provider-confirmed CID updates the launch form.
 const LIMIT = 2 * 1024 * 1024;
 let nextId = 0;
-const copy = {
-  en: {
-    label: 'Upload a coin image', help: 'PNG only · up to 2 MiB · 16–2048 px per side. Use a noninterlaced 8-bit RGB/RGBA PNG.',
-    checking: 'Checking image uploads…', ready: 'Choose an image to preview before uploading.',
-    upload: 'Upload image', cancel: 'Cancel upload', remove: 'Clear selection', retry: 'Check availability again',
-    reading: 'Reading image…', selected: 'Image ready to upload.', preview: 'Selected coin image preview',
-    sending: 'Sending image', pinning: 'Image sent. Waiting for the storage provider…',
-    success: 'Image pinned. Image CID is ready for your launch.', cid: 'Uploaded image CID',
-    public: 'Uploaded images are public on IPFS. Removing a selection does not delete a pin.',
-    fallback: 'Image already on IPFS? Use “I already have an image on IPFS” below.',
-    unavailable: 'Image upload is not set up on this server yet. If your image is already on IPFS, open “I already have an image on IPFS” below.',
-    connection: 'Could not reach the upload service. Check your connection and retry.',
-    invalid_request: 'The upload request was rejected. Choose the image again and retry.',
-    invalid_filename: 'Use a simple filename ending in .png, without slashes or special control characters.',
-    unsupported_image: 'Use a noninterlaced 8-bit RGB or RGBA PNG. Export your image as PNG and retry.',
-    invalid_image: 'This image could not be read. Export a fresh PNG and retry.',
-    too_large: 'Image must be at most 2 MiB, including after processing.',
-    invalid_dimensions: 'Image width and height must each be 16–2048 pixels.',
-    busy: 'Image uploads are busy. Wait a moment and retry.',
-    provider_unavailable: 'The image provider is unavailable. Retry later or paste an existing image CID.',
-    provider_failure: 'The provider did not confirm a valid pin. Retry or paste an existing image CID.',
-    timeout: 'Upload timed out. It may already be pinned. Retry or use an existing image CID.',
-    cancelled: 'Upload cancelled. A pin already accepted by the provider may remain.',
-    apply_failure: 'Image pinned, but the launch form could not be updated. Copy the uploaded CID below.',
-  },
-  es: {
-    label: 'Sube una imagen de la moneda', help: 'Solo PNG · hasta 2 MiB · 16–2048 px por lado. PNG RGB/RGBA de 8 bits sin entrelazado.',
-    checking: 'Comprobando la subida de imágenes…', ready: 'Elige una imagen para verla antes de subirla.',
-    upload: 'Subir imagen', cancel: 'Cancelar subida', remove: 'Quitar selección', retry: 'Comprobar disponibilidad',
-    reading: 'Leyendo imagen…', selected: 'Imagen lista para subir.', preview: 'Vista previa de la imagen seleccionada',
-    sending: 'Enviando imagen', pinning: 'Imagen enviada. Esperando al proveedor de almacenamiento…',
-    success: 'Imagen guardada. El CID está listo para el lanzamiento.', cid: 'CID de la imagen subida',
-    public: 'Las imágenes subidas son públicas en IPFS. Quitar la selección no elimina la imagen subida.',
-    fallback: '¿Tu imagen ya está en IPFS? Usa «Ya tengo una imagen en IPFS» abajo.',
-    unavailable: 'La subida de imágenes aún no está configurada en este servidor. Si tu imagen ya está en IPFS, abre «Ya tengo una imagen en IPFS» abajo.',
-    connection: 'No se pudo conectar al servicio. Comprueba tu conexión y reintenta.',
-    invalid_request: 'Solicitud rechazada. Vuelve a elegir la imagen y reintenta.',
-    invalid_filename: 'Usa un nombre sencillo terminado en .png, sin barras ni caracteres de control.',
-    unsupported_image: 'Usa un PNG RGB o RGBA de 8 bits sin entrelazado. Exporta la imagen como PNG y reintenta.',
-    invalid_image: 'No se pudo leer la imagen. Exporta un PNG nuevo y reintenta.',
-    too_large: 'La imagen debe ocupar como máximo 2 MiB, incluso después de procesarla.',
-    invalid_dimensions: 'El ancho y el alto deben medir entre 16 y 2048 píxeles.',
-    busy: 'El servicio está ocupado. Espera un momento y reintenta.',
-    provider_unavailable: 'El proveedor no está disponible. Reintenta más tarde o pega un CID existente.',
-    provider_failure: 'El proveedor no confirmó una imagen válida. Reintenta o pega un CID existente.',
-    timeout: 'La subida agotó el tiempo. Puede que la imagen ya esté guardada. Reintenta o usa un CID existente.',
-    cancelled: 'Subida cancelada. El proveedor puede conservar una imagen que ya haya aceptado.',
-    apply_failure: 'Imagen guardada, pero no se pudo actualizar el formulario. Copia el CID de abajo.',
-  },
-};
+const knownCode = code => typeof code === 'string' && translate('en', 'media.' + code) !== 'media.' + code;
 
 export function mediaUploader({ language = () => 'en', esc, onPinned } = {}) {
   // Text is assigned through DOM APIs; esc is accepted for the host component contract.
   void esc;
-  const text = key => (copy[typeof language === 'function' ? language() : language] || copy.en)[key] || copy.en.provider_failure;
+  const text = key => { const lang = typeof language === 'function' ? language() : language; const value = translate(lang, 'media.' + key); return value === 'media.' + key ? translate(lang, 'media.provider_failure') : value; };
   let root, nodes, available = false, checking = false, busy = false, revision = 0;
   let file, dataUrl, pinned, reader, xhr, statusController, previewImage;
 
@@ -154,7 +106,7 @@ export function mediaUploader({ language = () => 'en', esc, onPinned } = {}) {
       nodes.details.hidden = false;
       say('selected');
     } catch (error) {
-      if (current === revision && nodes) say(Object.hasOwn(copy.en, error.message) ? error.message : 'invalid_image', true);
+      if (current === revision && nodes) say(knownCode(error.message) ? error.message : 'invalid_image', true);
     } finally {
       if (current === revision) { busy = false; reader = null; controls(); }
     }
@@ -189,7 +141,7 @@ export function mediaUploader({ language = () => 'en', esc, onPinned } = {}) {
       let result;
       try { result = JSON.parse(request.responseText); } catch { finish('provider_failure'); return; }
       if (request.status < 200 || request.status >= 300) {
-        finish(Object.hasOwn(copy.en, result?.code) ? result.code : 'provider_failure'); return;
+        finish(knownCode(result?.code) ? result.code : 'provider_failure'); return;
       }
       if (!/^b(?:afkrei|afybei)[a-z2-7]{52}$/.test(result?.cid || '') || result.contentType !== 'image/png') {
         finish('provider_failure'); return;

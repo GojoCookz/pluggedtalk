@@ -1,6 +1,6 @@
 import { NETWORK, POLICY, QUOTES } from '../lib/config.mjs';
 import { validatePlan } from '../lib/plan.mjs';
-import { messages } from './i18n.js';
+import { LOCALES, LOCALE_CODES, loadLocale, matchLanguage, translate, direction } from './i18n.js';
 import { blankPrograms } from '../lib/programs.mjs';
 import { rewardFields, programFields, captureOptions } from './options.js';
 import { economicsFields, captureEconomics, curvePreview, updateValuation } from './economics-fields.js';
@@ -27,9 +27,10 @@ const paths = {
 const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.plug}"/></svg>`;
 function readStorage(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function persist(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
-let lang = readStorage('plugged.language', 'en'); if (!messages[lang]) lang = 'en';
+const storedLanguage = readStorage('plugged.language', null);
+let lang = LOCALE_CODES.includes(storedLanguage) ? storedLanguage : matchLanguage(navigator.languages?.length ? navigator.languages : [navigator.language]);
 let theme = readStorage('plugged.theme', 'light'); if (!['light','dark'].includes(theme)) theme = 'light';
-const t = (key, args = {}) => Object.entries(args).reduce((s,[key,value]) => s.replace(`{${key}}`, value), messages[lang][key] ?? messages.en[key] ?? key);
+const t = (key, args) => translate(lang, key, args);
 const initialSearch = new URLSearchParams(location.search);
 let source = 'plugged';
 let sort = initialSearch.get('sort') === 'newest' ? 'newest' : 'trending';
@@ -98,20 +99,20 @@ function nav() {
   const current = route()[0];
   const html = ['discover','create','earnings','programs','assets','guide'].map(key => `<a class="nav-link" href="#${key}" ${current === key || ((current === 'token' || current === 'advanced-token') && key === 'discover') || (current === 'advanced' && key === 'create') ? 'aria-current="page"' : ''}>${icon(key)}${esc(t(key))}</a>`).join('');
   $('.desktop-nav').innerHTML = html; $('.mobile-nav').innerHTML = html;
-  document.documentElement.lang = lang; document.documentElement.dataset.theme = theme;
+  document.documentElement.lang = lang; document.documentElement.dir = direction(lang); document.documentElement.dataset.theme = theme;
   $('meta[name="theme-color"]').setAttribute('content',theme==='dark'?'#101713':'#f5f7f6');
-  $('#language').value = lang; $('#build-label').textContent = t('preview');
+  $('#language').value = lang; $('.language-code').textContent = lang.split('-')[0].toUpperCase(); $('#build-label').textContent = t('preview');
   $('#theme').innerHTML = icon(theme === 'light' ? 'moon':'sun'); $('#theme').setAttribute('aria-label',t(theme === 'light' ? 'dark':'light'));
   $('#wallet').innerHTML = `${icon('earnings')}<span>${esc(account ? short(account):t('connect'))}</span>`;
   $('#wallet').setAttribute('aria-label',account ? `${t('disconnect')} ${account}`:t('connect'));
   $('#wallet-title').textContent = t('walletTitle'); $('#close-wallet').innerHTML = icon('close'); $('#close-wallet').setAttribute('aria-label',t('close'));
-  $('.skip').textContent = lang === 'es' ? 'Saltar al contenido':'Skip to content';
-  $('.brand').setAttribute('aria-label',lang==='es'?'Inicio de Plugged':'Plugged home');
-  $('.desktop-nav').setAttribute('aria-label',lang==='es'?'Principal':'Primary');
-  $('.mobile-nav').setAttribute('aria-label',lang==='es'?'Móvil':'Mobile');
-  $('.network-strip').setAttribute('aria-label',lang==='es'?'Estado de la red':'Network status');
-  $('label[for=language]').textContent=lang==='es'?'Idioma':'Language';
-  $('#notifications').setAttribute('aria-label',lang==='es'?'Avisos':'Notifications');
+  $('.skip').textContent = t('skip');
+  $('.brand').setAttribute('aria-label',t('home'));
+  $('.desktop-nav').setAttribute('aria-label',t('primaryNav'));
+  $('.mobile-nav').setAttribute('aria-label',t('mobileNav'));
+  $('.network-strip').setAttribute('aria-label',t('networkStatus'));
+  $('label[for=language]').textContent=t('languageLabel');
+  $('#notifications').setAttribute('aria-label',t('notifications'));
 }
 function rail() {
   return `<aside class="rail"><section class="rail-panel"><h2>${t('feesTitle')}</h2><p>${t('feesBody')}</p><div class="fee-path">
@@ -144,7 +145,7 @@ function updateMarkets() {
   const matching = marketData.tokens.filter(c => `${c.name} ${c.symbol} ${c.address}`.toLowerCase().includes(query.toLowerCase().trim()));
   const hasVolume = marketData.tokens.some(c=>c.volume24hUsd!==null);
   matching.sort((a,b) => sort === 'newest' ? b.launchedAt-a.launchedAt : (b.volume24hUsd ?? -1)-(a.volume24hUsd ?? -1) || b.launchedAt-a.launchedAt);
-  target.innerHTML = `<div class="source-note"><p>${t('source')}<br>${t(hasVolume?'sample':'noVolume',{n:marketData.sampled})}<br><span>${new Date(marketData.observedAt).toLocaleString(lang)} · block ${esc(marketData.blockNumber)}</span></p><button data-refresh>${t('refresh')}</button></div>
+  target.innerHTML = `<div class="source-note"><p>${t('source')}<br>${t(hasVolume?'sample':'noVolume',{n:marketData.sampled})}<br><span>${new Date(marketData.observedAt).toLocaleString(lang)} · ${t('blockNumber',{n:esc(marketData.blockNumber)})}</span></p><button data-refresh>${t('refresh')}</button></div>
     ${marketData.warnings.map(w => `<p class="callout">${esc(w)}</p>`).join('')}
     ${matching.length ? `<div class="coin-grid">${matching.map(coinCard).join('')}</div>` : empty(t('noMatches'),t('changeSearch'),`<button data-reset>${t('reset')}</button>`)}`;
 }
@@ -262,7 +263,7 @@ function tokenDetail(address) {
   }
   const cap = coin.maxWalletBps === null ? t('capUnknown') : coin.maxWalletBps===0 ? t('capOff') : `${coin.maxWalletBps/100}%`;
   const chart = coin.dexPair ? `<iframe class="chart" title="Dexscreener ${esc(coin.symbol)}" loading="lazy" src="https://dexscreener.com/robinhood/${coin.dexPair}?embed=1&theme=${theme}&trades=0&info=0" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>` : empty(t('chartMissing'),t('chartHelp'));
-  $('#main').innerHTML = `<a class="text-link" href="#discover">${t('back')}</a><div class="detail-header">${artwork(coin.address)}<div><h1>${esc(coin.name)}</h1><p class="muted">${esc(coin.symbol)} / ${esc(coin.quoteSymbol)} · Carbon</p></div></div><div class="layout token-layout"><section class="token-source"><div class="detail-metrics"><div><small>${t('marketcap')}</small><strong>${amount(coin.marketCapUsd)}</strong></div><div><small>${t('volume')}</small><strong>${amount(coin.volume24hUsd)}</strong></div><div><small>${t('sourceCap')}</small><strong>${cap}</strong></div></div>${chart}<p class="address-block">${esc(coin.address)}</p><div class="form-actions"><button data-copy="${esc(coin.address)}">${t('copy')}</button><a class="primary-link" href="${NETWORK.explorer}/token/${esc(coin.address)}" target="_blank" rel="noopener noreferrer">${t('viewExplorer')}</a></div><p class="receipt-note">${t('capCaveat')}</p><p class="receipt-note">${t('source')} · ${new Date(marketData.observedAt).toLocaleString(lang)} · block ${esc(marketData.blockNumber)}</p></section><aside id="token-trading" aria-label="${t('trade')}"></aside></div>`;
+  $('#main').innerHTML = `<a class="text-link" href="#discover">${t('back')}</a><div class="detail-header">${artwork(coin.address)}<div><h1>${esc(coin.name)}</h1><p class="muted">${esc(coin.symbol)} / ${esc(coin.quoteSymbol)} · Carbon</p></div></div><div class="layout token-layout"><section class="token-source"><div class="detail-metrics"><div><small>${t('marketcap')}</small><strong>${amount(coin.marketCapUsd)}</strong></div><div><small>${t('volume')}</small><strong>${amount(coin.volume24hUsd)}</strong></div><div><small>${t('sourceCap')}</small><strong>${cap}</strong></div></div>${chart}<p class="address-block">${esc(coin.address)}</p><div class="form-actions"><button data-copy="${esc(coin.address)}">${t('copy')}</button><a class="primary-link" href="${NETWORK.explorer}/token/${esc(coin.address)}" target="_blank" rel="noopener noreferrer">${t('viewExplorer')}</a></div><p class="receipt-note">${t('capCaveat')}</p><p class="receipt-note">${t('source')} · ${new Date(marketData.observedAt).toLocaleString(lang)} · ${t('blockNumber',{n:esc(marketData.blockNumber)})}</p></section><aside id="token-trading" aria-label="${t('trade')}"></aside></div>`;
   mountScreen(liveTrading,$('#token-trading'),coin);
   document.title=`${coin.name} (${coin.symbol}) · Plugged`;
 }
@@ -297,12 +298,12 @@ function render() {
   activeScreen?.destroy();activeScreen=null;
   nav(); const [page,address] = route();
   if (page==='create') mountScreen(liveLaunch,$('#main')); else if(page==='advanced') mountScreen(advancedLaunch,$('#main')); else if(page==='planner') create(); else if(page==='earnings') mountScreen(liveEarnings,$('#main')); else if(page==='programs') mountScreen(livePrograms,$('#main')); else if(page==='assets') assetsView(); else if(page==='guide') guide(); else if(page==='token') tokenDetail(address); else if(page==='advanced-token') mountScreen(advancedToken,$('#main'),address); else discover();
-  if(page!=='token')document.title=`${t(page==='planner'?'plannerTitle':page==='advanced-token'?'advanced':messages.en[page]?page:'discover')} · Plugged`;
+  if(page!=='token')document.title=`${t(page==='planner'?'plannerTitle':page==='advanced-token'?'advanced':['create','advanced','earnings','programs','assets','guide'].includes(page)?page:'discover')} · Plugged`;
 }
 async function connect(selected) {
   const dialog = $('#wallet-dialog');
   if (!selected) {
-    if (window.ethereum && ![...providers.values()].some(p=>p.provider===window.ethereum)) providers.set('injected',{info:{name:'Browser wallet'},provider:window.ethereum});
+    if (window.ethereum && ![...providers.values()].some(p=>p.provider===window.ethereum)) providers.set('injected',{info:{name:t('browserWallet')},provider:window.ethereum});
     $('#wallet-options').innerHTML = `<p class="muted">${t('walletHelp')}</p>` + (providers.size ? [...providers.entries()].map(([id,p])=>`<button data-provider="${esc(id)}">${esc(String(p.info.name).slice(0,60))}</button>`).join('') : `<p>${t('walletNone')}</p>`);
     dialog.showModal(); return;
   }
@@ -334,7 +335,8 @@ function clearPreview(selector) {
   const target=$(selector);if(target){target.requestId=null;target.textContent='';}
 }
 $('#theme').addEventListener('click',()=>{captureForm();theme=theme==='light'?'dark':'light';try{persist('plugged.theme',theme);}catch{} render();});
-$('#language').addEventListener('change',event=>{captureForm();lang=event.target.value;clearTimeout(noticeTimer);$('#notice').hidden=true;invalidateTransactions();try{persist('plugged.language',lang);}catch{}render();});
+$('#language').innerHTML=LOCALES.map(l=>`<option value="${l.code}" lang="${l.code}">${esc(l.name)}</option>`).join('');
+$('#language').addEventListener('change',async event=>{captureForm();const next=event.target.value;if(!LOCALE_CODES.includes(next))return;await loadLocale(next);lang=next;clearTimeout(noticeTimer);$('#notice').hidden=true;invalidateTransactions();try{persist('plugged.language',lang);}catch{}render();});
 $('#wallet').addEventListener('click',()=>{if(account){disconnect();nav();}else connect();});
 $('#close-wallet').addEventListener('click',()=>{connectionEpoch++;$('#wallet-dialog').close();});
 $('#wallet-dialog').addEventListener('cancel',()=>{connectionEpoch++;});
@@ -426,4 +428,5 @@ document.addEventListener('click',async event=>{
   if(el.dataset.copy){try{await navigator.clipboard.writeText(el.dataset.copy);toast(t('copied'));}catch{toast(t('copyFailed'));}}
   if(el.dataset.provider){const selected=providers.get(el.dataset.provider);if(selected)await connect(selected.provider);}
 });
+if (!(await loadLocale(lang))) lang = 'en';
 render(); loadMarkets();

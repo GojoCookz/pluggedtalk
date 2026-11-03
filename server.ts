@@ -5,6 +5,7 @@ import { usdValuation, quoteEthRoute, routeInput } from './lib/market-services.m
 import { resolveSocial, resolveLaunchRecipients, integrationReadiness } from './lib/social-service.mjs';
 import { validatePlan } from './lib/plan.mjs';
 import { NETWORK, POLICY, QUOTES } from './lib/config.mjs';
+import { LOCALE_CODES } from './lib/locales.mjs';
 import assetCatalog from './data/assets.json';
 import ponsReference from './data/pons-reference.json';
 import carbonDeployment from './data/carbon-deployment.json';
@@ -24,7 +25,7 @@ import { ProgramStore } from './lib/program-service-store.mjs';
 import { MediaService, MAX_MEDIA_BODY_BYTES, mediaErrorResponse } from './lib/media-service.mjs';
 import { assertProductionConfig, createJsonApi, HttpError, sendJson as json } from './lib/http-api.mjs';
 
-const files = new Map([['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/mark.svg', ['mark.svg', 'image/svg+xml']]]);
+const files = new Map([['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/mark.svg', ['mark.svg', 'image/svg+xml']], ...LOCALE_CODES.filter(code => code !== 'en').map(code => [`/locales/${code}.js`, [`locales/${code}.js`, 'text/javascript']])]);
 const dist = new URL('./dist/', import.meta.url);
 
 /** Injection is server-side only. No HTTP input selects a service, provider or deployment. */
