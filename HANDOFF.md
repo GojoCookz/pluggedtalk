@@ -92,6 +92,12 @@ The server never needs or accepts a wallet private key. Users sign in their own 
   M2 now has an on-chain cross-check for ETH/WETH/USDG; L5, L6, L9, L10 fixed on 2026-11-03.
   Contract M-1 and L-4 fixed, L-2 reduced (50 recipients, 19.6M gas on Anvil, under the 32M cap).
 
+- **Carbon is the master index.** Every finding that touches Carbon (contracts, the deployed engine,
+  chain standards) is also recorded in the Hood workspace at `contracts/audit/` as a numbered file
+  plus a line in `contracts/audit/INDEX.md`. Plugged's are in `contracts/audit/19-plugged-findings.md`.
+  Keep doing this: add new Carbon-relevant findings there (append to 19 or add 20+) and update INDEX.md.
+  Those files are not in this package; ask the owner for them.
+
 ## 6. Remaining risks (read before going live)
 
 - **Price**: stock-token quote assets have no independent on-chain price check yet (Chainlink
