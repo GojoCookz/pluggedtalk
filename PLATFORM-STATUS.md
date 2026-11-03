@@ -35,6 +35,23 @@ Entry point for Merc: `HANDOFF.md`. Thread: https://discord.com/channels/1530362
 | EIP-5792 batching, Permit2 | Deferred with reasons (standards doc section 4) |
 | Languages (13 locales) | **Not done.** UI remains English + Spanish. ~544 inline string pairs plus the `web/i18n.js` table must move to keyed per-locale files and be translated into 11 more languages; deferred so the handoff could be verified on a memory-constrained host |
 | Package | See "Handoff package" below |
+
+### Handoff package
+
+- Built from commit `04f8f37` with `tools/package-handoff.mjs` (content secret scan passed).
+- Zip: `C:/Users/shies/AppData/Local/Temp/opencode/plugged-handoff-20261103-04f8f37.zip`
+- Size: **1,528,121 bytes**. SHA-256: `db2a57a44c3657cecbdcc4178ec6c0810c7b75fbc65de1339cc7e46dc02c6156`
+- Contents: the 363 manifest files + `PACKAGE-MANIFEST.json` (no `node_modules`). A clean extraction
+  matched all 363 SHA-256 hashes; `deployment-owner.example.json` owner and platform recipient are
+  blank; no runtime, `.env`, keystore, database or secret file present. The staged package's own
+  `bun test test/` passed 313 / 0 fail (24 Anvil skips).
+
+### Preview (2026-11-03)
+
+Restarted on 4317 with `PLUGGED_LAUNCH_ENABLED=true` behind `kimaki tunnel` (health 200 on
+localhost). Tunnel: https://20d3969a6032431f.vqbz7kk2yfov.opentunnel.xyz — from this host the domain
+is intercepted by the ISP's (Spectrum) security block page, so public reachability is **unverified**.
+`PLUGGED_PUBLIC_ORIGIN` is set to the tunnel URL so browser POSTs through it pass the origin check.
 Feature modules do not count as delivered until connected to the server and interface.
 
 ## Existing verified baseline
