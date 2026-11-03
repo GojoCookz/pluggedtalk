@@ -22,7 +22,7 @@ import { FeeVaultService, feeVaultManifestFromEnv } from './lib/fee-vault-servic
 import { ProgramService } from './lib/program-service.mjs';
 import { ProgramStore } from './lib/program-service-store.mjs';
 import { MediaService, MAX_MEDIA_BODY_BYTES, mediaErrorResponse } from './lib/media-service.mjs';
-import { createJsonApi, HttpError, sendJson as json } from './lib/http-api.mjs';
+import { assertProductionConfig, createJsonApi, HttpError, sendJson as json } from './lib/http-api.mjs';
 
 const files = new Map([['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/mark.svg', ['mark.svg', 'image/svg+xml']]]);
 const dist = new URL('./dist/', import.meta.url);
@@ -233,6 +233,7 @@ export function createPlatformServer(options: any = {}) {
 const platform = createPlatformServer();
 export const server = platform.server;
 if (import.meta.main) {
+  try { assertProductionConfig(); } catch (error: any) { console.error(error.message); process.exit(1); }
   const port = Number(process.env.PORT || 4317);
   server.listen(port, '127.0.0.1', () => console.log(`Plugged frozen build: http://localhost:${port}\nAssets: ${fileURLToPath(dist)}`));
   platform.startWorker();

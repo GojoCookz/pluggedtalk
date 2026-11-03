@@ -162,6 +162,32 @@ describe('durable trade confirmation and adversarial receipts',()=>{
       expect((await f.service.status({id:p.id,txHash:newHash,replaces:hash})).status).toBe(r.status);
     }
   });
+  test('L6: concurrent replacements compare-and-set; the loser cannot overwrite the winner',async()=>{
+    const f=setup(),p=await submittedFixture(f),original=await f.client.getTransaction();
+    f.client.getTransactionReceipt=async()=>{throw Object.assign(new Error('pending'),{name:'TransactionReceiptNotFoundError'});};
+    await f.service.submit({id:p.id,txHash:hash});
+    const a='0x'+'21'.repeat(32),b='0x'+'22'.repeat(32);let release;const gate=new Promise(r=>release=r);
+    f.client.getTransaction=async({hash:h})=>{if(h===a||h===b)await gate;return original;};
+    const first=f.service.status({id:p.id,txHash:a,replaces:hash}),second=f.service.status({id:p.id,txHash:b,replaces:hash});
+    release();
+    const results=await Promise.allSettled([first,second]);
+    expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+    expect(results.find(r=>r.status==='rejected').reason.code).toBe('TRADING_CONFLICT');
+    const stored=f.service.get(p.id);expect([a,b]).toContain(stored.txHash);expect(stored.previousHashes).toEqual([hash]);
+  });
+  test('L6: a status check that started before a replacement cannot write its stale hash back',async()=>{
+    const f=setup(),p=await submittedFixture(f),original=await f.client.getTransaction(),receipt=await f.client.getTransactionReceipt();
+    const newHash='0x'+'23'.repeat(32);let release;const gate=new Promise(r=>release=r);
+    f.client.getTransactionReceipt=async({hash:h})=>{if(h===hash)throw Object.assign(new Error('pending'),{name:'TransactionReceiptNotFoundError'});return receipt;};
+    await f.service.submit({id:p.id,txHash:hash});
+    f.client.getTransaction=async({hash:h})=>{if(h===hash)await gate;return original;};
+    const stale=f.service.status({id:p.id});
+    f.client.getTransaction=async()=>original;
+    await f.service.status({id:p.id,txHash:newHash,replaces:hash}).catch(()=>{});
+    release();
+    await stale.catch(e=>expect(e.code).toBe('TRADING_CONFLICT'));
+    expect(f.service.get(p.id).txHash).toBe(newHash);
+  });
   test('replacement rejects changed nonce, trade calldata, foreign sender and mined original',async()=>{
     for(const bad of [{nonce:8},{input:'0x1234'},{from:token},{value:1n},{chainId:1}]){
       const f=setup(),p=await submittedFixture(f),original=await f.client.getTransaction();

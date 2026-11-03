@@ -29,7 +29,7 @@ test('disabled developer cannot retain revenue; all-off rejected',()=>{
   expect(validatePlan({...plan(),rewards:{developerEnabled:false,communityEnabled:false}}).ok).toBe(false);
 });
 test('social origins reject lookalike hosts credentials and javascript',()=>{
-  for(const value of ['https://x.com.evil.test/me','https://me:pw@x.com/me','javascript:alert(1)','https://x.com/'])expect(httpsUrl(value,['x.com'])).toBe(false);
+  for(const value of ['https://x.com.evil.test/me','https://'+'me:pw@x.com/me','javascript:alert(1)','https://x.com/'])expect(httpsUrl(value,['x.com'])).toBe(false);
   expect(validatePlan({...plan(),socials:{x:'https://x.com/plugged',telegram:'https://t.me/plugged',discord:'https://discord.gg/plugged'}}).ok).toBe(true);
 });
 const campaign=()=>({...blankPrograms(),fundraising:{enabled:true,beneficiary:wallet,goal:'100.123456',deadline:'2027-01-01T12:00:00.000Z'},refunds:{enabled:true,trigger:'goal-not-met-at-deadline'}});

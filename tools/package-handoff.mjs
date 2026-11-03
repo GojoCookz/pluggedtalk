@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile, readdir, copyFile, stat, lstat } from 'node
 import { resolve, join, dirname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { scanText, TEXT_FILE } from './secret-scan.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const ownerTemplate=JSON.parse(await readFile(join(root,'deployment-owner.example.json'),'utf8'));
 if(ownerTemplate.ownerAddress!==''||ownerTemplate.platformRecipientAddress!=='')throw new Error('Handoff ownership template must have blank owner and platform-recipient addresses. Local choices belong in runtime/deployment-owner.json.');
@@ -106,11 +107,14 @@ for(const name of ['PluggedAdvancedFactory','PluggedLaunchRegistry','FeeHook','T
   const {abi}=JSON.parse(await readFile(source,'utf8'));if(!Array.isArray(abi))throw new Error(`Missing ABI in ${name} artifact; run forge build first.`);
   await mkdir(dirname(target),{recursive:true});await writeFile(target,JSON.stringify({abi})+'\n');
 }
-const hashes=[];
+const hashes=[],leaks=[];
 for(const path of await files(out)){
   const name=relative(out,path).replaceAll('\\','/');if(name.startsWith('node_modules/'))continue;
   if(privatePath.test(name)&&!abiArtifacts.has(name))throw new Error('Private/runtime path in release: '+name);
   const content=await readFile(path);hashes.push({path:name,bytes:content.length,sha256:createHash('sha256').update(content).digest('hex')});
+  // L9: path rules miss secrets pasted into ordinary files; scan every shipped text file's content.
+  if(TEXT_FILE.test(name))leaks.push(...scanText(content.toString('utf8'),name));
 }
+if(leaks.length)throw new Error('Secret-like content in release (values withheld):\n'+leaks.map(f=>`${f.path}:${f.line} ${f.rule}`).join('\n'));
 await writeFile(join(out,'PACKAGE-MANIFEST.json'),JSON.stringify({createdAt:new Date().toISOString(),package:'Plugged developer handoff for Merc',transformations:['Standalone pinned viem and pngjs imports','Allowlisted Solidity import closure and licenses','Portable optional browser-tool defaults','Bundled backend and frozen frontend','Operations templates and workstream API contracts'],files:hashes},null,2)+'\n');
 console.log(JSON.stringify({directory:out,files:hashes.length,sourceBytes:hashes.reduce((n,f)=>n+f.bytes,0),note:'Exclude node_modules when archiving. Verify from a clean extraction before delivery.'}));

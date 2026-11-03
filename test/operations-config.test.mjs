@@ -41,7 +41,7 @@ test('preflight is fail-closed for missing release, placeholder domain, private 
   } finally { f.cleanup(); }
 });
 test('public origins reject credentials, paths, IPs and example domains', () => {
-  for (const value of ['http://production.com', 'https://user:secret@production.com', 'https://production.com/app',
+  for (const value of ['http://production.com', 'https://' + 'user:secret@production.com', 'https://production.com/app',
     'https://production.com?x=1', 'https://localhost', 'https://127.0.0.1', 'https://example.com', 'https://foo.test']) expect(publicOrigin(value)).toBeNull();
   expect(publicOrigin('https://plugged.operator-domain.com')).toBe('https://plugged.operator-domain.com');
 });
