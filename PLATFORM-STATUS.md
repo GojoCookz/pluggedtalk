@@ -38,13 +38,19 @@ Entry point for Merc: `HANDOFF.md`. Thread: https://discord.com/channels/1530362
 
 ### Handoff package
 
-- Built from commit `04f8f37` with `tools/package-handoff.mjs` (content secret scan passed).
-- Zip: `C:/Users/shies/AppData/Local/Temp/opencode/plugged-handoff-20261103-04f8f37.zip`
-- Size: **1,528,121 bytes**. SHA-256: `db2a57a44c3657cecbdcc4178ec6c0810c7b75fbc65de1339cc7e46dc02c6156`
-- Contents: the 363 manifest files + `PACKAGE-MANIFEST.json` (no `node_modules`). A clean extraction
-  matched all 363 SHA-256 hashes; `deployment-owner.example.json` owner and platform recipient are
-  blank; no runtime, `.env`, keystore, database or secret file present. The staged package's own
-  `bun test test/` passed 313 / 0 fail (24 Anvil skips).
+- Built from commit `5ec3308` with `tools/package-handoff.mjs` (content secret scan passed). Includes
+  13 locales and `carbon-audit/INDEX.md` + `carbon-audit/19-plugged-findings.md` (Carbon master index snapshot).
+- Zip: `C:/Users/shies/AppData/Local/Temp/opencode/plugged-handoff-20261103-5ec3308.zip`
+- Size: **2,089,609 bytes**. SHA-256: `93d520e08f48dfabfc33c5026a346477c6fb8b848f24d1460cf24bdc3c1cfc99`
+- Contents: the 397 manifest files + `PACKAGE-MANIFEST.json` (no `node_modules`). A clean extraction
+  matched all 397 SHA-256 hashes with no extra files; `deployment-owner.example.json` owner and platform
+  recipient are blank; no runtime, `.env`, keystore, database or secret file present. The staged
+  package's own `bun test test/` passed 320 / 0 fail (24 Anvil skips).
+- Verification at that commit (2026-11-03): workspace `bun test test/` 320 pass / 24 skip / 0 fail;
+  `forge test` (non-fork) 100 pass / 6 fork skips; Anvil vault, advanced and programs suites 6/6 each;
+  `bun run build` 319,063 JS bytes + 12 lazy locale files; `tools/platform-browser-check.mjs` 24 checks /
+  13 AccessLint states / 0 errors and `tools/launch-browser-check.mjs` 12 checks / 0 errors against a fresh
+  `server.ts` (port 4328, temp DB, signing off); `tools/i18n-browser-check.mjs` 108 runs / 0 failures.
 
 ### Preview (2026-11-03)
 
