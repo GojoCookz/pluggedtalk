@@ -1,5 +1,6 @@
 import { formatUnits } from '../../app/node_modules/viem/_esm/index.js';
 import { NETWORK } from '../lib/config.mjs';
+import { serverError } from './i18n.js';
 
 // Advanced (plugged-advanced-v1) Discover cards, token page, per-pool trading and per-quote
 // rewards. Strings are inline EN/ES. Everything shown comes from server re-verification.
@@ -26,7 +27,7 @@ export function advancedDiscover({language,esc,onChange}){
     const head=`<div class="source-tabs"><strong>${L('Advanced','Avanzado')}</strong></div>`;
     if(state==='loading'||state==='idle')return `<section aria-label="${L('Advanced launches','Lanzamientos avanzados')}">${head}<p class="receipt-note">${L('Verifying advanced launches on-chain…','Verificando lanzamientos avanzados en cadena…')}</p></section>`;
     if(state==='error')return `<section>${head}<p class="receipt-note">${L('Advanced market source is unavailable.','La fuente de mercados avanzados no está disponible.')}</p><button type="button" data-advanced-refresh>${L('Retry','Reintentar')}</button></section>`;
-    if(!data.available)return `<section>${head}<p class="receipt-note">${L('Advanced launches are unavailable: ','Lanzamientos avanzados no disponibles: ')}${esc(data.reason||'')}</p></section>`;
+    if(!data.available)return `<section>${head}<p class="receipt-note">${/profile is configured/.test(data.reason||'')?L('Advanced launches are not set up on this server yet.','Los lanzamientos avanzados aún no están configurados en este servidor.'):esc(serverError(data.reason||L('Advanced launches are unavailable.','Lanzamientos avanzados no disponibles.'),language()))}</p></section>`;
     const q=query.toLowerCase().trim(),rows=data.tokens.filter(c=>`${c.name} ${c.symbol} ${c.address}`.toLowerCase().includes(q));
     const cards=rows.map(c=>`<a class="coin" href="#advanced-token/${esc(c.address)}" aria-label="${esc(`${c.name} ${c.symbol} ${L('Advanced','Avanzado')}`)}"><div class="coin-head"><div><h2 class="coin-name">${esc(c.name)}</h2><small>${esc(c.symbol)}</small> <span class="coin-addr">${short(c.address)}</span></div></div>
       <div class="coin-stats"><div><small>${L('Quote pools','Fondos del par')}</small><strong>${c.markets.length}</strong></div><div><small>${L('Wallet cap','Límite por billetera')}</small><strong>3%</strong></div></div>
@@ -50,7 +51,7 @@ export function advancedTokenScreen({language,esc,trading}){
   }
   function render(error){
     if(!host)return;
-    if(error||!token){host.innerHTML=`<a class="text-link" href="#discover">${L('Back to coins','Volver a monedas')}</a><section class="form-section"><h1>${L('Advanced token','Moneda avanzada')}</h1><p class="${error?'error-list':'receipt-note'}" role="status">${esc(error||L('Re-verifying on-chain…','Reverificando en cadena…'))}</p>${error?`<p class="receipt-note">${L('Trading stays unavailable until verification succeeds.','Las operaciones siguen no disponibles hasta que la verificación tenga éxito.')}</p>`:''}</section>`;return;}
+    if(error||!token){host.innerHTML=`<a class="text-link" href="#discover">${L('Back to coins','Volver a monedas')}</a><section class="form-section"><h1>${L('Advanced token','Moneda avanzada')}</h1><p class="${error?'error-list':'receipt-note'}" role="status">${esc(error?serverError(error,language()):L('Re-verifying on-chain…','Reverificando en cadena…'))}</p>${error?`<p class="receipt-note">${L('Trading stays unavailable until verification succeeds.','Las operaciones siguen no disponibles hasta que la verificación tenga éxito.')}</p>`:''}</section>`;return;}
     const lang=language(),rows=token.markets.map(m=>`<tr><td><label><input type="radio" name="advanced-pool" value="${esc(m.pool)}" ${same(m.pool,pool)?'checked':''}> ${esc(m.symbol)}</label></td><td>${units(m.marketCapQuote,m.decimals,m.symbol,lang)}</td><td>${(Number(m.graduationProgressBps)/100).toFixed(2)}%${m.graduated?` · ${L('graduated','graduado')}`:''}</td><td>${m.feeBps/100}%</td><td><span class="address-block">${esc(short(m.poolId))}</span></td></tr>`).join('');
     host.innerHTML=`<a class="text-link" href="#discover">${L('Back to coins','Volver a monedas')}</a><div class="detail-header"><div><h1>${esc(token.name)}</h1><p class="muted">${esc(token.symbol)} · ${L('Advanced','Avanzado')} · ${token.markets.length} ${L('quote pools','fondos del par')}</p></div></div>
       <div class="layout token-layout"><section class="token-source"><fieldset><legend>${L('Choose the quote pool to trade','Elige el fondo del par para operar')}</legend><div class="table-scroll"><table><thead><tr><th>${L('Pool','Fondo')}</th><th>${L('Pool value (hook)','Valor del fondo (hook)')}</th><th>${L('Milestone progress','Progreso del hito')}</th><th>${L('Fee','Comisión')}</th><th>${L('Pool ID','ID del fondo')}</th></tr></thead><tbody>${rows}</tbody></table></div></fieldset>
@@ -89,7 +90,7 @@ export function advancedRewardsScreen({wallet,connect,language,esc}){
         <p class="receipt-note">${L('Holder fees go to the basket ledger; holder claims from it are not available here yet.','Las comisiones de titulares van al libro de cesta; aún no se pueden cobrar aquí.')}</p>
         <div class="form-actions">${Object.entries(m.actions).filter(([,on])=>on).map(([a])=>btn(`data-adv-reward="${a}" data-token="${esc(p.token)}" data-pool="${esc(m.pool)}"`,label(a))).join('')}</div></div>`).join('')}</section>`).join('')??'';
     root.innerHTML=`<section class="form-section" aria-label="${L('Advanced rewards','Recompensas avanzadas')}"><h2>${L('Advanced launch rewards','Recompensas de lanzamientos avanzados')}</h2>
-      <div class="form-actions">${btn(`data-adv-reward="${account?'refresh':'connect'}"`,account?L('Refresh advanced rewards','Actualizar recompensas avanzadas'):L('Connect wallet','Conectar billetera'))}</div>
+      <div class="form-actions">${account?btn('data-adv-reward="refresh"',L('Refresh advanced rewards','Actualizar recompensas avanzadas')):`<p class="receipt-note">${L('Connect your wallet above to see advanced rewards.','Conecta tu billetera arriba para ver las recompensas avanzadas.')}</p>`}</div>
       <p role="status" aria-live="polite" class="${error?'error-list':'receipt-note'}">${esc(error||message)}</p>
       ${data&&!data.available?`<p class="receipt-note">${L('Unavailable: ','No disponible: ')}${esc(data.reason||'')}</p>`:''}
       ${data?.available&&!data.positions.length?`<p class="receipt-note">${L('No confirmed advanced launches.','No hay lanzamientos avanzados confirmados.')}</p>`:''}${pools}

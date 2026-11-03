@@ -23,7 +23,7 @@ export function rewardsScreen({wallet,connect,language,esc}){
     provider?.removeListener?.('accountsChanged',invalidate);provider?.removeListener?.('chainChanged',invalidate);provider=next;
     provider?.on?.('accountsChanged',invalidate);provider?.on?.('chainChanged',invalidate);
   }
-  function invalidate(){epoch++;data=null;review=null;social=null;message=L('Wallet or settings changed. Refresh balances.','La billetera o los ajustes cambiaron. Actualiza los saldos.');error='';watch();render();}
+  function invalidate(){epoch++;data=null;review=null;social=null;message=wallet().account?L('Wallet or settings changed. Refresh balances.','La billetera o los ajustes cambiaron. Actualiza los saldos.'):'';error='';watch();render();}
   async function api(path,body){
     const controller=new AbortController();requests.add(controller);const timeout=setTimeout(()=>controller.abort(),60000);
     try{const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:controller.signal});const result=await r.json();if(!r.ok)throw new Error(result.error||L('Request failed. Retry.','Solicitud fallida. Reintenta.'));return result;}
@@ -41,7 +41,7 @@ export function rewardsScreen({wallet,connect,language,esc}){
     root.innerHTML=`<div id="rewards-screen">
       <div class="page-top"><div><h1>${L('Your rewards','Tus recompensas')}</h1><p>${L('Fees go to their configured recipients. Your wallet signs every transaction.','Las comisiones van a sus destinatarios configurados. Tu billetera firma cada transacción.')}</p></div></div>
       <div class="form-actions">${btn(account?'refresh':'connect',account?L('Refresh balances','Actualizar saldos'):L('Connect wallet','Conectar billetera'),'class="primary"')}</div>
-      <p class="address-block">${esc(account||L('Connect to read your balances.','Conecta para consultar tus saldos.'))}</p>
+      ${account?`<p class="address-block"><span class="sr-only">${L('Connected wallet','Billetera conectada')}: </span>${esc(account)}</p>`:`<p class="receipt-note">${L('Connect your wallet to see what you can collect.','Conecta tu billetera para ver lo que puedes cobrar.')}</p>`}
       <p id="rewards-status" role="status" aria-live="polite" class="${error?'error-list':'receipt-note'}">${esc(error||message)}</p>
       <div class="form-layout"><div id="reward-positions"></div><section class="plan-receipt rail-panel" aria-label="${L('Reward review','Revisión de recompensas')}" id="reward-review"></section></div>
       <section class="form-section"><h2>${L('Social beneficiaries','Beneficiarios sociales')}</h2><p class="receipt-note">${L('Resolve an X or GitHub profile to its EVM payout address. This may create an embedded wallet; it does not grant access to it.','Resuelve un perfil de X o GitHub a su dirección EVM. Esto puede crear una billetera integrada; no concede acceso a ella.')}</p>
@@ -49,7 +49,7 @@ export function rewardsScreen({wallet,connect,language,esc}){
       <div id="reward-social-result"></div><p class="receipt-note">${L('No OAuth or social login is available here. The recipient must obtain control of the exact resolved wallet through the provider. A profile match is not proof of wallet control, nonprofit status or endorsement.','Aquí no hay OAuth ni inicio de sesión social. El destinatario debe obtener control de la billetera exacta mediante el proveedor. Resolver un perfil no prueba control, condición de entidad benéfica ni respaldo.')}</p>
       <a class="text-link" href="https://docs.bags.fm/api-reference/get-fee-share-wallet" target="_blank" rel="noopener noreferrer">${L('Provider documentation','Documentación del proveedor')}</a></section></div>`;
     const positions=root.querySelector('#reward-positions');
-    if(!current)positions.innerHTML=`<section class="form-section"><h2>${L('Confirmed Plugged launches','Lanzamientos Plugged confirmados')}</h2><p>${busy?L('Reading on-chain balances…','Consultando saldos en cadena…'):L('Refresh to load on-chain balances.','Actualiza para cargar los saldos en cadena.')}</p></section>`;
+    if(!current)positions.innerHTML=`<section class="form-section"><h2>${L('Confirmed Plugged launches','Lanzamientos Plugged confirmados')}</h2><p>${busy?L('Reading on-chain balances…','Consultando saldos en cadena…'):account?L('Choose Refresh balances to load your on-chain balances.','Elige Actualizar saldos para cargar tus saldos en cadena.'):L('Your launches and earnings appear here after you connect.','Tus lanzamientos e ingresos aparecen aquí al conectar.')}</p></section>`;
     else{
       positions.innerHTML=current.positions.length?current.positions.map(p=>{
         if(p.status==='unavailable')return `<section class="form-section"><h2>${esc(p.name)}</h2><p class="error-list">${esc(p.error)}</p></section>`;

@@ -92,7 +92,8 @@ function artwork(address = '0x1234567890') {
   }
   return `<svg class="coin-art" viewBox="0 0 46 46" aria-hidden="true"><g fill="currentColor" opacity=".8">${cells}</g></svg>`;
 }
-function empty(title, body, action = '') { return `<section class="empty">${icon('plug')}<h2>${esc(title)}</h2><p>${esc(body)}</p>${action}</section>`; }
+function usd(value) { const n=Number(value); return Number.isFinite(n)?new Intl.NumberFormat(lang,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n):`$${value}`; }
+function empty(title, body, action = '', heading = 'h2') { return `<section class="empty">${icon('plug')}<${heading}>${esc(title)}</${heading}><p>${esc(body)}</p>${action}</section>`; }
 function nav() {
   const current = route()[0];
   const html = ['discover','create','earnings','programs','assets','guide'].map(key => `<a class="nav-link" href="#${key}" ${current === key || ((current === 'token' || current === 'advanced-token') && key === 'discover') || (current === 'advanced' && key === 'create') ? 'aria-current="page"' : ''}>${icon(key)}${esc(t(key))}</a>`).join('');
@@ -226,7 +227,7 @@ function updateReceipt() {
   const holder = Number.isInteger(d.holderBps) && d.holderBps>=0 && d.holderBps<=10000 ? d.holderBps : null;
   $('#receipt').innerHTML = `<div class="receipt-heading"><img src="/mark.svg" width="44" height="44" alt=""><div><h2>${esc(d.name||t('unnamed'))}</h2><small>${esc(d.symbol||'TOKEN')} · ${t('draft')}</small></div></div>
     <div class="receipt-line"><span>${t('quote')}</span><strong>${esc(QUOTES.find(q=>q.address===d.quote)?.symbol||'—')}</strong></div><div class="receipt-line"><span>${t('supply')}</span><strong>${new Intl.NumberFormat(lang).format(Number(POLICY.totalSupply))}</strong></div><div class="receipt-line"><span>${t('cap')}</span><strong>3%</strong></div>
-    <div class="receipt-line"><span>${t('openingUsd')}</span><strong>$2,500</strong></div><div class="receipt-line"><span>${t('milestoneUsd')}</span><strong>$${esc(d.economics.milestoneMarketCapUsd??'40000')}</strong></div>
+    <div class="receipt-line"><span>${t('openingUsd')}</span><strong>$2,500</strong></div><div class="receipt-line"><span>${t('milestoneUsd')}</span><strong>${esc(usd(d.economics.milestoneMarketCapUsd??'40000'))}</strong></div>
     <div class="receipt-line"><span>${t('holderPool')}</span><strong>${holder===null?'—':holder/100+'%'}</strong></div><div class="receipt-line"><span>${t('recipientPool')}</span><strong>${holder===null?'—':(10000-holder)/100+'%'}</strong></div>
     ${(d.rewards?.developerEnabled?d.recipients:[]).map((row,index)=>`<div class="receipt-split"><div><span>${esc(row.kind&&row.kind!=='wallet'?recipientLabel(row):row.address?short(row.address):`${t('allRecipients')} ${index+1}`)}</span><strong>${Number.isFinite(row.bps)?row.bps/100+'%':'—'}</strong></div><progress aria-label="${t('allRecipients')} ${index+1}" max="10000" value="${Number.isFinite(row.bps)?Math.max(0,Math.min(10000,row.bps)):0}"></progress></div>`).join('')}
     ${d.programs?.fundraising.enabled?`<div class="receipt-line"><span>${t('fundraising')}</span><strong>${esc(d.programs.fundraising.goal||'—')} ${esc(QUOTES.find(q=>q.address===d.quote)?.symbol)}</strong></div><p class="receipt-note">${t('refundHint')}</p>`:''}
@@ -257,12 +258,13 @@ function guide() {
 function tokenDetail(address) {
   const coin = marketState==='ready' ? marketData?.tokens.find(c=>c.address.toLowerCase()===address?.toLowerCase()) : null;
   if (!coin) {
-    $('#main').innerHTML = `<a class="text-link" href="#discover">${t('back')}</a>${empty(t(marketState==='loading'?'loading':marketState==='error'?'noSource':'tokenMissing'),t(marketState==='loading'?'loadHelp':marketState==='error'?'sourceError':'tokenMissingHelp'),marketState==='loading'?'':`<button data-refresh>${t('refresh')}</button>`)}`; return;
+    $('#main').innerHTML = `<a class="text-link" href="#discover">${t('back')}</a>${empty(t(marketState==='loading'?'loading':marketState==='error'?'noSource':'tokenMissing'),t(marketState==='loading'?'loadHelp':marketState==='error'?'sourceError':'tokenMissingHelp'),marketState==='loading'?'':`<button data-refresh>${t('refresh')}</button>`,'h1')}`; document.title=`${t(marketState==='loading'?'loading':'tokenMissing')} · Plugged`; return;
   }
   const cap = coin.maxWalletBps === null ? t('capUnknown') : coin.maxWalletBps===0 ? t('capOff') : `${coin.maxWalletBps/100}%`;
   const chart = coin.dexPair ? `<iframe class="chart" title="Dexscreener ${esc(coin.symbol)}" loading="lazy" src="https://dexscreener.com/robinhood/${coin.dexPair}?embed=1&theme=${theme}&trades=0&info=0" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>` : empty(t('chartMissing'),t('chartHelp'));
   $('#main').innerHTML = `<a class="text-link" href="#discover">${t('back')}</a><div class="detail-header">${artwork(coin.address)}<div><h1>${esc(coin.name)}</h1><p class="muted">${esc(coin.symbol)} / ${esc(coin.quoteSymbol)} · Carbon</p></div></div><div class="layout token-layout"><section class="token-source"><div class="detail-metrics"><div><small>${t('marketcap')}</small><strong>${amount(coin.marketCapUsd)}</strong></div><div><small>${t('volume')}</small><strong>${amount(coin.volume24hUsd)}</strong></div><div><small>${t('sourceCap')}</small><strong>${cap}</strong></div></div>${chart}<p class="address-block">${esc(coin.address)}</p><div class="form-actions"><button data-copy="${esc(coin.address)}">${t('copy')}</button><a class="primary-link" href="${NETWORK.explorer}/token/${esc(coin.address)}" target="_blank" rel="noopener noreferrer">${t('viewExplorer')}</a></div><p class="receipt-note">${t('capCaveat')}</p><p class="receipt-note">${t('source')} · ${new Date(marketData.observedAt).toLocaleString(lang)} · block ${esc(marketData.blockNumber)}</p></section><aside id="token-trading" aria-label="${t('trade')}"></aside></div>`;
   mountScreen(liveTrading,$('#token-trading'),coin);
+  document.title=`${coin.name} (${coin.symbol}) · Plugged`;
 }
 async function loadAssets() {
   if(assetState==='loading')return;
@@ -278,22 +280,24 @@ function assetsView() {
   $('#asset-filter').value=assetFilter;updateAssets();
   if(assetState==='idle')loadAssets();
 }
+const ASSET_PAGE=24;let assetLimit=ASSET_PAGE;
 function updateAssets() {
   const target=$('#asset-results');if(!target)return;
   if(assetState==='loading'||assetState==='idle'){target.innerHTML=empty(t('loading'),t('assetHint'));return;}
   if(assetState==='error'){target.innerHTML=empty(t('noSource'),t('sourceError'));return;}
   const rows=assetData.assets.filter(a=>(assetFilter==='all'||assetFilter==='stock'&&a.issuerListed||assetFilter==='carbon'&&a.carbonReferenced||assetFilter==='bridge'&&a.provenance.some(p=>p.includes('li.quest')))
     &&`${a.name} ${a.symbol} ${a.address}`.toLowerCase().includes(assetQuery.toLowerCase().trim()));
-  target.innerHTML=`<p class="source-note">${rows.length} ${t('assetCount')} · ${assetData.coverage.issuerAssets} ${t('stocks')} · ${assetData.pools.length} ${t('providerPools')} · ${esc(new Date(assetData.indexedAt).toLocaleString(lang))}</p>
-    <div class="asset-grid">${rows.map(a=>{const pools=assetData.pools.filter(p=>p.base===a.address||p.quote===a.address);return `<article class="asset-card"><h2>${esc(a.symbol)}</h2><p>${esc(a.name)}</p><p class="address-block">${esc(a.address)}</p><p class="muted">${a.decimals} ${t('decimals')} · ${a.codeVerified===true?t('codeVerified'):t('quoteNotVerified')}</p>
-    <details><summary>${t('provenance')} · ${pools.length} ${t('providerPools')}</summary><ul>${a.provenance.map(p=>`<li>${p.startsWith('https://')?`<a class="text-link" href="${esc(p)}" target="_blank" rel="noopener noreferrer">${esc(p)}</a>`:esc(p)}</li>`).join('')}</ul><p>${t('bridgeUnverified')}</p>${pools.map(p=>`<p><a class="text-link" href="${esc(p.source)}" target="_blank" rel="noopener noreferrer">${esc(p.dex)} · ${short(p.id)}</a> · ${short(p.base)} / ${short(p.quote)}</p>`).join('')}</details>
-    <div class="form-actions"><a class="text-link" href="${NETWORK.explorer}/token/${a.address}" target="_blank" rel="noopener noreferrer">${t('viewExplorer')}</a>${QUOTES.some(q=>q.address===a.address)?`<button type="button" data-quote-select="${a.address}">${t('useQuote')}</button>`:''}</div></article>`;}).join('')}</div>`;
+  const plural=(n,key)=>`${new Intl.NumberFormat(lang).format(n)} ${t(n===1?key+'One':key)}`,shown=rows.slice(0,assetLimit);
+  target.innerHTML=`<p class="source-note">${plural(rows.length,'assetCount')} · ${new Intl.NumberFormat(lang).format(assetData.coverage.issuerAssets)} ${t('stocks')} · ${plural(assetData.pools.length,'providerPools')} · ${esc(new Date(assetData.indexedAt).toLocaleString(lang))}</p>
+    <div class="asset-grid">${shown.map(a=>{const pools=assetData.pools.filter(p=>p.base===a.address||p.quote===a.address);return `<article class="asset-card"><h2>${esc(a.symbol)}</h2><p>${esc(a.name)}</p><p class="address-block"><span class="sr-only">${t('contractAddress')}: </span>${esc(a.address)}</p><p class="muted">${a.decimals} ${t('decimals')} · ${a.codeVerified===true?t('codeVerified'):t('quoteNotVerified')}</p>
+    <details><summary>${t('provenance')} · ${plural(pools.length,'providerPools')}</summary><ul>${a.provenance.map(p=>`<li>${p.startsWith('https://')?`<a class="text-link" href="${esc(p)}" target="_blank" rel="noopener noreferrer">${esc(p)}</a>`:esc(p)}</li>`).join('')}</ul><p>${t('bridgeUnverified')}</p>${pools.map(p=>`<p><a class="text-link" href="${esc(p.source)}" target="_blank" rel="noopener noreferrer">${esc(p.dex)} · ${short(p.id)}</a> · ${short(p.base)} / ${short(p.quote)}</p>`).join('')}</details>
+    <div class="form-actions"><a class="text-link" href="${NETWORK.explorer}/token/${a.address}" target="_blank" rel="noopener noreferrer">${t('viewExplorer')}</a>${QUOTES.some(q=>q.address===a.address)?`<button type="button" data-quote-select="${a.address}">${t('useQuote')}</button>`:''}</div></article>`;}).join('')}</div>${rows.length>shown.length?`<div class="form-actions"><button type="button" data-assets-more>${t('showMore',{n:Math.min(ASSET_PAGE,rows.length-shown.length)})}</button><span class="muted">${t('showingOf',{shown:shown.length,total:rows.length})}</span></div>`:''}`;
 }
 function render() {
   activeScreen?.destroy();activeScreen=null;
   nav(); const [page,address] = route();
   if (page==='create') mountScreen(liveLaunch,$('#main')); else if(page==='advanced') mountScreen(advancedLaunch,$('#main')); else if(page==='planner') create(); else if(page==='earnings') mountScreen(liveEarnings,$('#main')); else if(page==='programs') mountScreen(livePrograms,$('#main')); else if(page==='assets') assetsView(); else if(page==='guide') guide(); else if(page==='token') tokenDetail(address); else if(page==='advanced-token') mountScreen(advancedToken,$('#main'),address); else discover();
-  document.title=`${t(page==='token'?'discover':messages.en[page]?page:'discover')} · Plugged`;
+  if(page!=='token')document.title=`${t(page==='planner'?'plannerTitle':page==='advanced-token'?'advanced':messages.en[page]?page:'discover')} · Plugged`;
 }
 async function connect(selected) {
   const dialog = $('#wallet-dialog');
@@ -339,7 +343,7 @@ $('.skip').addEventListener('click',event=>{event.preventDefault();$('#main').fo
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
 document.addEventListener('input',event=>{
   if(event.target.id==='search'){query=event.target.value;syncSearch();updateMarkets();updateAdvanced();}
-  if(event.target.id==='asset-search'){assetQuery=event.target.value;updateAssets();}
+  if(event.target.id==='asset-search'){assetQuery=event.target.value;assetLimit=ASSET_PAGE;updateAssets();}
   if(event.target.closest('#create-form')){
     const previousQuote=formState.quote;
     dirty=true;captureForm();const name=event.target.name;
@@ -372,7 +376,7 @@ document.addEventListener('input',event=>{
     }else updateReceipt();
   }
 });
-document.addEventListener('change',event=>{if(event.target.id==='asset-filter'){assetFilter=event.target.value;updateAssets();}});
+document.addEventListener('change',event=>{if(event.target.id==='asset-filter'){assetFilter=event.target.value;assetLimit=ASSET_PAGE;updateAssets();}});
 document.addEventListener('submit',event=>{if(event.target.id==='create-form'){event.preventDefault();savePlan();}});
 document.addEventListener('click',async event=>{
   const el=event.target.closest('button'); if(!el) return;
@@ -381,6 +385,7 @@ document.addEventListener('click',async event=>{
   if(el.hasAttribute('data-refresh')) { loadMarkets(); advancedList.refresh(); }
   if(el.hasAttribute('data-advanced-refresh')) advancedList.refresh();
   if(el.hasAttribute('data-assets-refresh'))loadAssets();
+  if(el.hasAttribute('data-assets-more')){const next=assetLimit;assetLimit+=ASSET_PAGE;updateAssets();const heading=document.querySelectorAll('#asset-results .asset-card')[next]?.querySelector('h2');if(heading){heading.tabIndex=-1;heading.focus();}}
   if(el.hasAttribute('data-add-market')){captureForm();if(formState.economics.markets.length<4){const quotes=new Set(formState.economics.markets.map(m=>m.quote));formState.economics.markets.push({quote:QUOTES.find(q=>!quotes.has(q.address)).address,allocationBps:0,openingCap:''});dirty=true;create();}}
   if(el.hasAttribute('data-remove-market')){captureForm();formState.economics.markets.splice(Number(el.dataset.removeMarket),1);dirty=true;create();}
   if(el.hasAttribute('data-refresh-price')){captureForm();await updateValuation(formState,t,esc,true);}

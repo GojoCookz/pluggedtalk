@@ -58,6 +58,8 @@ export function programsScreen({wallet,connect,language,esc}) {
     if(pending){html+=`<p class="address-block">${esc(pending.txHash)}</p>`+btn('confirm',L('Check confirmation','Comprobar confirmación'));}
     else if(recovery){html+=`<details class="funding-section"><summary>${L('Recover a sent transaction','Recuperar una transacción enviada')}</summary><label class="field">${L('Transaction hash from your wallet','Hash de tu billetera')}<input name="recoveryHash" autocomplete="off" spellcheck="false" maxlength="66" placeholder="0x…"></label>${btn('recover',L('Verify transaction','Verificar transacción'))}<p class="receipt-note">${L('If your wallet did not send anything, clear this review to start again. Clearing never cancels an on-chain transaction.','Si tu billetera no envió nada, borra la revisión para empezar de nuevo. Borrarla no cancela una transacción en la cadena.')}</p>${btn('clear-recovery',L('Wallet did not send: clear review','No se envió: borrar revisión'))}</details>`;}
     target.innerHTML=html;
+    // No program selected and nothing in flight: an empty review card is just noise.
+    target.hidden=!p&&!r&&!pending&&!recovery;
     const status=root.querySelector('[data-program-status]');status.textContent=error||message;status.className=error?'error-list':'receipt-note';
     root.querySelector('[data-program-error-details]').innerHTML=errorDetails?`<details><summary>${L('Technical details','Detalles técnicos')}</summary><p class="receipt-note">${esc(errorDetails)}</p></details>`:'';
     root.querySelectorAll('[data-program-form]').forEach(form=>{

@@ -15,7 +15,7 @@ export function feeVaultScreen({wallet,connect,language,esc}){
   const line=(label,value)=>`<div class="receipt-line"><span>${label}</span><strong>${esc(String(value))}</strong></div>`;
   const short=a=>a?`${a.slice(0,6)}…${a.slice(-4)}`:'';
   function watch(){const next=root?wallet().provider:null;if(provider===next)return;provider?.removeListener?.('accountsChanged',invalidate);provider?.removeListener?.('chainChanged',invalidate);provider=next;provider?.on?.('accountsChanged',invalidate);provider?.on?.('chainChanged',invalidate);}
-  function invalidate(){epoch++;data=null;review=null;message=status?.deployed?L('Wallet or settings changed. Refresh containers.','La billetera o los ajustes cambiaron. Actualiza los contenedores.'):'';error='';watch();render();}
+  function invalidate(){epoch++;data=null;review=null;message=status?.deployed&&wallet().account?L('Wallet or settings changed. Refresh containers.','La billetera o los ajustes cambiaron. Actualiza los contenedores.'):'';error='';watch();render();}
   async function api(path,body){
     const controller=new AbortController();requests.add(controller);const timeout=setTimeout(()=>controller.abort(),60000);
     try{const r=await fetch(path,body===undefined?{signal:controller.signal}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:controller.signal});const result=await r.json();if(!r.ok)throw new Error(result.error?serverError(result.error,language()):L('Request failed. Retry.','Solicitud fallida. Reintenta.'));return result;}
@@ -47,7 +47,7 @@ export function feeVaultScreen({wallet,connect,language,esc}){
     if(!root)return;const account=wallet().account;let body;
     if(!status)body=`<p>${L('Checking fee vault…','Comprobando la bóveda de comisiones…')}</p>`;
     else if(!status.deployed)body=`<p>${L('Not deployed yet. No funds can be held, accepted or reclaimed here until a verified vault is configured. Nothing shown here is a balance.','Aún no desplegada. No se pueden retener, aceptar ni recuperar fondos hasta configurar una bóveda verificada. Nada aquí es un saldo.')}</p>`;
-    else if(!account)body=`<p>${L('Connect a wallet to see containers addressed to you or created by you.','Conecta una billetera para ver contenedores dirigidos a ti o creados por ti.')}</p><button type="button" data-vault="connect">${L('Connect wallet','Conectar billetera')}</button>`;
+    else if(!account)body=`<p>${L('After you connect your wallet above, containers addressed to you or created by you appear here.','Cuando conectes tu billetera arriba, aquí aparecen los contenedores dirigidos a ti o creados por ti.')}</p>`;
     else{
       const current=data&&same(data.account,account)?data:null;
       body=`<p class="address-block">${L('Vault','Bóveda')}: ${esc(status.address)}</p><button type="button" data-vault="refresh" ${busy?'disabled':''}>${current?L('Refresh containers','Actualizar contenedores'):L('Load containers','Cargar contenedores')}</button>`;

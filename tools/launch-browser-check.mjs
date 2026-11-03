@@ -15,6 +15,7 @@ try{
   await page.locator('#theme').click();await shot('launch-mobile-dark');await page.locator('#language').selectOption('es');await page.getByRole('heading',{name:'Lanza tu moneda'}).waitFor();checks.push('launch form supports light/dark and Spanish');
   await page.locator('#language').selectOption('en');await page.locator('#theme').click();
   await page.locator('[name=name]').fill('Browser fixture — not a launch');await page.locator('[name=symbol]').fill('FIXTURE');
+  await page.locator('.cid-details:not([open]) > summary').first().click().catch(()=>{});
   await page.locator('[name=imageCid]').fill('bafkreicmvyrqyx76pqosx5fdwk6asqdzcaxis6bynbsithhhyav2ggextm');
   await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('[name=symbol]').inputValue(),'FIXTURE');checks.push('live draft survives reload');
   await page.evaluate(({account,hash})=>{
