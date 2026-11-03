@@ -68,7 +68,7 @@ export function createPlatformServer(options: any = {}) {
   const post = (path: string, handler: any, extra = {}) => routes.set(path, { handler, ...extra });
 
   get('/api/health', () => ({ status: draining ? 'draining' : 'ok', service: 'plugged', startedAt, chainId: NETWORK.id,
-    scope: 'process-liveness', note: 'This endpoint does not assert deployment or provider readiness.' }), { limit: 300 });
+    scope: 'process-liveness', note: 'This endpoint does not assert deployment or provider readiness.' }), { exempt: true });
   get('/api/config', () => ({ network: { ...NETWORK, launcher: carbonDeployment.deployment.launcher }, policy: POLICY, quotes: QUOTES,
     launchEnabled, programsEnabled, engine: carbonDeployment, reason: launchEnabled ? null : 'Launch signing is disabled by the operator.' }));
   get('/api/assets', () => assetCatalog);
@@ -89,7 +89,7 @@ export function createPlatformServer(options: any = {}) {
         markets: '/api/advanced/markets', trading: 'per-pool', rewards: ['sweep', 'release', 'recover-splitter', 'recover-feed'], holderLedgerClaims: false },
     }, productionReady: false, note: 'HTTP availability, operator flags and catalog snapshots do not establish live provider, deployment, hosting or backup readiness.' }));
   get('/api/pons-reference', () => ({ ...ponsReference, native: ponsReference.liveConfiguration.nativeQuote, assets: ponsReference.approvedAssets }));
-  get('/api/markets', async () => { try { return await launches().markets(); } catch { throw new HttpError(503, 'Robinhood market source is unavailable. Retry shortly.'); } });
+  get('/api/markets', async () => { try { return await launches().markets(); } catch { throw new HttpError(503, 'Robinhood market source is unavailable. Retry shortly.'); } }, { limit: 30 });
   get('/api/valuation', async ({ query }: any) => { try { return await (options.usdValuation ?? usdValuation)(query.get('quote'), query.get('milestoneUsd') ?? undefined); } catch { throw new HttpError(503, 'USD conversion unavailable. The $2,500 target is unchanged; retry pricing.'); } });
   post('/api/launches/prepare', ({ input }: any) => { gate(launchEnabled, 'Launch'); return launches().prepare(input); });
   post('/api/launches/funding', ({ input }: any) => { gate(launchEnabled, 'Launch'); return (options.prepareFunding ?? prepareFunding)(input); });
@@ -106,14 +106,14 @@ export function createPlatformServer(options: any = {}) {
   post('/api/advanced/submit', ({ input }: any) => { exact(input, ['id', 'txHash']); return advanced().submit(id(input), input.txHash); });
   post('/api/advanced/status', ({ input }: any) => { exact(input, ['id']); return advanced().recordStatus(id(input)); });
   // Advanced markets: listed, traded and rewarded only after per-request re-verification.
-  get('/api/advanced/markets', () => advancedMarkets().list());
-  get('/api/advanced/token', ({ query }: any) => advancedMarkets().detail(query.get('address') ?? ''));
+  get('/api/advanced/markets', () => advancedMarkets().list(), { limit: 30 });
+  get('/api/advanced/token', ({ query }: any) => advancedMarkets().detail(query.get('address') ?? ''), { limit: 30 });
   post('/api/advanced/trading/balances', ({ input }: any) => advancedTrades().balances(input));
   post('/api/advanced/trading/quote', ({ input }: any) => advancedTrades().quote(input));
   post('/api/advanced/trading/prepare', ({ input }: any) => { gate(launchEnabled, 'Trading'); return advancedTrades().prepare(input); });
   post('/api/advanced/trading/submit', ({ input }: any) => advancedTrades().submit(input));
   post('/api/advanced/trading/status', ({ input }: any) => advancedTrades().status(input));
-  post('/api/advanced/rewards/positions', ({ input }: any) => advancedEarnings().positions(input));
+  post('/api/advanced/rewards/positions', ({ input }: any) => advancedEarnings().positions(input), { limit: 10 });
   post('/api/advanced/rewards/prepare', ({ input }: any) => { gate(launchEnabled, 'Rewards'); return advancedEarnings().prepare(input); });
   post('/api/advanced/rewards/submit', ({ input }: any) => advancedEarnings().submit(input));
   post('/api/trading/balances', ({ input }: any) => trades().balances(input));
@@ -121,12 +121,12 @@ export function createPlatformServer(options: any = {}) {
   post('/api/trading/prepare', ({ input }: any) => { gate(launchEnabled, 'Trading'); return trades().prepare(input); });
   post('/api/trading/submit', ({ input }: any) => trades().submit(input));
   post('/api/trading/status', ({ input }: any) => trades().status(input));
-  post('/api/rewards/positions', ({ input }: any) => earnings().positions(input));
+  post('/api/rewards/positions', ({ input }: any) => earnings().positions(input), { limit: 10 });
   post('/api/rewards/prepare', ({ input }: any) => { gate(launchEnabled, 'Rewards'); return earnings().prepare(input); });
   post('/api/rewards/submit', ({ input }: any) => earnings().submit(input));
   post('/api/rewards/status', ({ input }: any) => earnings().submit(input));
   get('/api/vault/status', () => feeVault.status());
-  post('/api/vault/containers', ({ input }: any) => feeVault.containers(input));
+  post('/api/vault/containers', ({ input }: any) => feeVault.containers(input), { limit: 20 });
   post('/api/vault/prepare', ({ input }: any) => { gate(launchEnabled, 'Vault'); return feeVault.prepare(input); });
   post('/api/vault/submit', ({ input }: any) => feeVault.submit(input));
   get('/api/programs', ({ query }: any) => programService().list({ account: query.get('account') || undefined }));
@@ -143,7 +143,7 @@ export function createPlatformServer(options: any = {}) {
     req.socket.once('close', cancel);
     try { if (res.destroyed) controller.abort(); return await media.pin(input, { signal: controller.signal }); }
     finally { res.off('close', cancel); req.off('aborted', cancel); req.socket.off('close', cancel); }
-  }, { maxBytes: MAX_MEDIA_BODY_BYTES, limit: 10, formatError: mediaErrorResponse });
+  }, { maxBytes: MAX_MEDIA_BODY_BYTES, limit: 5, globalLimit: 30, dailyLimit: 30, formatError: mediaErrorResponse });
   post('/api/recipients/resolve', ({ input }: any) => {
     if (!options.resolveSocial && !process.env.BAGS_API_KEY) throw new HttpError(503, 'Social wallet resolution is not configured. You can save the profile allocation now.');
     return (options.resolveSocial ?? resolveSocial)(input);
@@ -200,8 +200,10 @@ export function createPlatformServer(options: any = {}) {
         // Do not use feature loggers that may include credential-bearing RPC errors.
         // Continue other retained records even when one upstream lookup fails.
         for (const [service, limit] of [[launches(), 20], [programService(), 100]] as const) {
-          for (const record of service.store.list('submitted', limit)) {
+          const store: any = service.store;
+          for (const record of store.listForReconcile ? store.listForReconcile('submitted', limit) : store.list('submitted', limit)) {
             try { await service.confirm(record); } catch { failed = true; }
+            try { store.checked?.(record.id, Date.now()); } catch {}
           }
         }
         if (!(await advanced().reconcile())) failed = true;

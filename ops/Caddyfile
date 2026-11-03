@@ -7,9 +7,15 @@
   encode zstd gzip
   # Caddy manages the certificate and redirects HTTP to HTTPS.
   # No file_server: runtime, environment files, source and backups are never served.
+  # Above the largest API body (media pin); the app enforces per-route limits too.
+  request_body {
+    max_size 4MB
+  }
   reverse_proxy 127.0.0.1:4317 {
     header_up Host {http.request.host}
     header_up X-Forwarded-Host {http.request.host}
+    # The app trusts X-Real-IP only from a loopback peer (this proxy) for per-client limits.
+    header_up X-Real-IP {http.request.remote.host}
     transport http {
       dial_timeout 5s
       response_header_timeout 30s

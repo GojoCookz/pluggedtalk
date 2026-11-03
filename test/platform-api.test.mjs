@@ -197,9 +197,12 @@ test('slow streamed body times out and streamed oversize is rejected before prov
 test('bounded upload rate is checked before pinning and returns retry metadata', async () => {
   let calls = 0, clock = 0;
   const p = await serve({ now: () => clock, mediaService: { status: () => ({ available: true }), pin: () => { calls++; return {}; } } });
-  for (let i = 0; i < 10; i++) expect((await p.post('/api/media/pin')).status).toBe(200);
-  const denied = await p.post('/api/media/pin'); expect(denied.status).toBe(429); expect(denied.headers.get('retry-after')).toBe('60'); expect(calls).toBe(10);
+  for (let i = 0; i < 5; i++) expect((await p.post('/api/media/pin')).status).toBe(200);
+  const denied = await p.post('/api/media/pin'); expect(denied.status).toBe(429); expect(denied.headers.get('retry-after')).toBe('60'); expect(calls).toBe(5);
   clock = 60000; expect((await p.post('/api/media/pin')).status).toBe(200);
+  // Per-client daily cap (30) holds across minute windows.
+  for (let minute = 2; calls < 30; minute++) { clock = minute * 60000; for (let i = 0; i < 5 && calls < 30; i++) expect((await p.post('/api/media/pin')).status).toBe(200); }
+  clock += 60000; const daily = await p.post('/api/media/pin'); expect(daily.status).toBe(429); expect(Number(daily.headers.get('retry-after'))).toBeGreaterThan(60);
 });
 
 test('reconciliation never overlaps and shutdown waits for in-flight work before closing stores', async () => {

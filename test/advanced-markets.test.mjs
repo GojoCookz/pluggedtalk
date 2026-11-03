@@ -210,10 +210,13 @@ test('rewards prepare exact calldata for every per-quote action and refuses redi
 });
 
 test('rewards submit verifies payout events and token transfers; deferred sweeps are reported', async () => {
-  const f = await setup(), base = { account, chainId: 4663, token, pool: USDG }, rewardHash = '0x' + 'ab'.repeat(32);
+  const f = await setup(), base = { account, chainId: 4663, token, pool: USDG };
+  // Each submission needs its own hash: reward tx hashes are unique per preparation (L1).
+  let runs = 0, rewardHash;
   const launchTx = f.client.getTransaction, launchReceipt = f.client.getTransactionReceipt;
   const transfer = (from, to, value) => ({ address: USDG, topics: encodeEventTopics({ abi: erc20Abi, eventName: 'Transfer', args: { from, to } }), data: encodeAbiParameters([{ type: 'uint256' }], [value]) });
   const run = async (prepared, logs) => {
+    rewardHash = '0x' + (++runs).toString(16).padStart(2, '0').repeat(32);
     const tx = { from: account, to: prepared.transaction.to, input: prepared.transaction.data, value: 0n, chainId: 4663, blockNumber: BigInt(prepared.preparedBlock) + 1n, blockHash };
     Object.assign(f.client, { getTransaction: async q => q.hash === rewardHash ? tx : launchTx(q), getBlockNumber: async () => tx.blockNumber + 2n,
       getTransactionReceipt: async q => q.hash !== rewardHash ? launchReceipt(q) : ({ transactionHash: rewardHash, from: account, to: prepared.transaction.to, status: 'success', blockNumber: tx.blockNumber, blockHash, logs }) });

@@ -62,10 +62,62 @@ test('pending preparation limit releases after completion', async () => {
 test('provider credentials and verbose payloads are not reflected', () => {
   expect(publicError(new Error('RPC https://host.example/private-key?secret=123 failed Bearer abcdef'))).toBe('RPC [provider] failed Bearer [redacted]');
   expect(publicError(new Error('x'.repeat(900))).length).toBe(600);
+  expect(publicError(new Error("ENOENT: open 'C:\\Users\\alice\\plugged\\profile.json'"))).toBe("ENOENT: open '[path]'");
+  expect(publicError(new Error('cannot read /home/alice/profile.json, aborting'))).toBe('cannot read [path], aborting');
+  expect(publicError(new Error('Pair ETH/USD unavailable'))).toBe('Pair ETH/USD unavailable');
   const previous=process.env.PLUGGED_PINATA_JWT;
   try {
     process.env.PLUGGED_PINATA_JWT='synthetic-private-fixture-token';
     expect(publicError(new Error('failed synthetic-private-fixture-token'))).toBe('failed [redacted]');
     expect(publicError(new Error('api_key=synthetic-provider-value'))).toBe('api_key=[redacted]');
   } finally { if(previous===undefined)delete process.env.PLUGGED_PINATA_JWT;else process.env.PLUGGED_PINATA_JWT=previous; }
+});
+
+test('H1: twelve slow-body clients do not starve health or other clients', async () => {
+  const { connect } = await import('node:net');
+  const slowRoutes = new Map([
+    ['/api/health', { method: 'GET', exempt: true, handler: () => ({ ok: true }) }],
+    ['/work', { handler: () => ({ ok: true }) }],
+  ]);
+  const slowApi = createJsonApi({ routes: slowRoutes, bodyTimeoutMs: 5000 });
+  const slowServer = createServer(async (req, res) => { if (!await slowApi(req, res, new URL(req.url, 'http://localhost'))) { res.writeHead(404); res.end(); } });
+  await new Promise(resolve => slowServer.listen(0, '127.0.0.1', resolve));
+  const port = slowServer.address().port;
+  const sockets = [];
+  try {
+    for (let i = 0; i < 12; i++) {
+      const socket = connect(port, '127.0.0.1');
+      socket.on('error', () => {});
+      await new Promise(resolve => socket.once('connect', resolve));
+      socket.write('POST /work HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nContent-Length: 1000\r\n\r\n{');
+      sockets.push(socket);
+    }
+    await Bun.sleep(50);
+    const health = await fetch(`http://127.0.0.1:${port}/api/health`);
+    expect(health.status).toBe(200);
+    // Same loopback peer, but a distinct trusted client: its slots are not held by the slow bodies.
+    const other = await fetch(`http://127.0.0.1:${port}/work`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-real-ip': '203.0.113.9' }, body: '{}' });
+    expect(other.status).toBe(200);
+  } finally { for (const s of sockets) s.destroy(); slowServer.close(); }
+});
+
+test('H2: clients have separate buckets; spoofed header from non-loopback peer is ignored', async () => {
+  const { clientKey } = await import('../lib/http-api.mjs');
+  let t = 0;
+  const limited = new Map([['/one', { limit: 1, handler: () => ({ ok: true }) }]]);
+  const h = createJsonApi({ routes: limited, now: () => t });
+  const run = async (peer, ip) => {
+    let status = 0;
+    const res = { headersSent: false, destroyed: false, writableEnded: false, setHeader() {}, once() {}, writeHead(s) { status = s; }, end() {} };
+    const req = { method: 'POST', complete: true, socket: { remoteAddress: peer }, headers: { 'content-type': 'application/json', ...(ip ? { 'x-real-ip': ip } : {}) },
+      on(ev, fn) { if (ev === 'data') queueMicrotask(() => fn(Buffer.from('{}'))); }, once(ev, fn) { if (ev === 'end') setTimeout(fn, 0); }, off() {}, resume() {} };
+    await h(req, res, new URL('http://x/one'));
+    return status;
+  };
+  expect(await run('127.0.0.1', '198.51.100.1')).toBe(200);
+  expect(await run('127.0.0.1', '198.51.100.1')).toBe(429);
+  expect(await run('127.0.0.1', '198.51.100.2')).toBe(200);
+  expect(clientKey({ socket: { remoteAddress: '203.0.113.5' }, headers: { 'x-real-ip': '198.51.100.3' } })).toBe('203.0.113.5');
+  expect(await run('203.0.113.5', '198.51.100.3')).toBe(200);
+  expect(await run('203.0.113.5', '198.51.100.4')).toBe(429);
 });
