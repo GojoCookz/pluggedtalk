@@ -96,7 +96,8 @@ The server never needs or accepts a wallet private key. Users sign in their own 
   chain standards) is also recorded in the Hood workspace at `contracts/audit/` as a numbered file
   plus a line in `contracts/audit/INDEX.md`. Plugged's are in `contracts/audit/19-plugged-findings.md`.
   Keep doing this: add new Carbon-relevant findings there (append to 19 or add 20+) and update INDEX.md.
-  Those files are not in this package; ask the owner for them.
+  This package ships copies of both as `carbon-audit/INDEX.md` and `carbon-audit/19-plugged-findings.md`
+  (snapshot at export time; the other numbered audit files live only in the Hood workspace, ask the owner).
 
 ## 6. Remaining risks (read before going live)
 
