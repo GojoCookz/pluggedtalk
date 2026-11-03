@@ -52,12 +52,19 @@ Entry point for Merc: `HANDOFF.md`. Thread: https://discord.com/channels/1530362
   13 AccessLint states / 0 errors and `tools/launch-browser-check.mjs` 12 checks / 0 errors against a fresh
   `server.ts` (port 4328, temp DB, signing off); `tools/i18n-browser-check.mjs` 108 runs / 0 failures.
 
-### Preview (2026-11-03)
+### Preview (2026-11-03, 23:40 UTC)
 
-Restarted on 4317 with `PLUGGED_LAUNCH_ENABLED=true` behind `kimaki tunnel` (health 200 on
-localhost). Tunnel: https://20d3969a6032431f.vqbz7kk2yfov.opentunnel.xyz — from this host the domain
-is intercepted by the ISP's (Spectrum) security block page, so public reachability is **unverified**.
-`PLUGGED_PUBLIC_ORIGIN` is set to the tunnel URL so browser POSTs through it pass the origin check.
+Restarted on 4317 from commit `10690b2` (13 languages) with `PLUGGED_LAUNCH_ENABLED=true` behind
+`kimaki tunnel`, `PLUGGED_PUBLIC_ORIGIN` set from `KIMAKI_TUNNEL_URL` so browser POSTs pass the origin
+check. Tunnel: https://db795e31f4f8f9b8.vqbz7kk2yfov.opentunnel.xyz
+
+- **Reachable from outside (verified):** `/api/health` fetched through an external fetcher (r.jina.ai)
+  returned `{"status":"ok","service":"plugged","startedAt":"2026-11-03T23:40:27.146Z","chainId":4663,…}`,
+  the same `startedAt` as the local process, so it is this server.
+- From this host the tunnel host does not connect (the ISP intercepts it), so local checks use
+  http://localhost:4317. The earlier tunnel (`20d3969a6032431f…`) is retired.
+- The preview lasts while this machine and the tunnel process run; it is not a deployment.
+
 Feature modules do not count as delivered until connected to the server and interface.
 
 ## Existing verified baseline
