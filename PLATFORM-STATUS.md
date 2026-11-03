@@ -22,12 +22,25 @@ mainnet transactions or transfer ownership as part of this implementation pass.
 | Integration | HTTP routing, cross-feature verification, readiness and portable package | Connected APIs and portable smoke verified; final evidence in workstreams/integration.md | https://discord.com/channels/1530362963998015498/1566162897900404899 |
 
 Each team records its API contract, results and remaining blockers in `workstreams/`.
+
+## Handoff pass — 2026-11-03
+
+Entry point for Merc: `HANDOFF.md`. Thread: https://discord.com/channels/1530362963998015498/1565852347630887004
+
+| Item | Status |
+|---|---|
+| Robinhood Chain / Uniswap v4 standards | Reviewed with live measurements: `workstreams/standards-2026-11.md`; `tools/rh-chain-probe.mjs` pins 11 code hashes. No compiler/target/address change needed |
+| Audit M2, L5, L6, L9, L10 | Fixed with tests (see audit Fix status) |
+| Audit L-2 on a 4663 fork | Not run; 32M max tx gas measured on 4663, launch measured 19.6M on Anvil |
+| EIP-5792 batching, Permit2 | Deferred with reasons (standards doc section 4) |
+| Languages (13 locales) | **Not done.** UI remains English + Spanish. ~544 inline string pairs plus the `web/i18n.js` table must move to keyed per-locale files and be translated into 11 more languages; deferred so the handoff could be verified on a memory-constrained host |
+| Package | See "Handoff package" below |
 Feature modules do not count as delivered until connected to the server and interface.
 
 ## Existing verified baseline
 
 The launch MVP has wallet-signed ETH funding, quote approval, launch simulation,
-receipt-verified discovery and durable recovery. See `MVP-HANDOFF.md` for the exact
+receipt-verified discovery and durable recovery. See `HANDOFF.md` (current) and `MVP-HANDOFF.md` for the exact
 historical test results and deployed-engine limitations. Historical results do not certify
 the additions above. The current live launch path supports one pair and one creator wallet.
 

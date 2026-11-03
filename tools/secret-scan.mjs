@@ -12,6 +12,8 @@ const PUBLIC_DEV_KEYS = new Set([
   'dbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97',
   '2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6',
 ]);
+// Public key hardcoded upstream in forge-std StdChains.sol (vendored Solidity dependency).
+const PUBLIC_RPC_KEYS = new Set(['b9794ad1ddf84dfb8c34d6bb5dca2001']);
 export const RULES = [
   { id: 'private-key', re: /(?:priv(?:ate)?[_-]?key|secret[_-]?key|PLUGGED_PRIVATE_KEY|DEPLOYER_KEY|signer[_-]?key)["'\s]*[:=]\s*["'`]?(?:0x)?([0-9a-fA-F]{64})\b/gi, value: 1 },
   { id: 'jwt', re: /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g },
@@ -30,7 +32,7 @@ export function scanText(text, path = '') {
       if (rule.id === 'private-key' && PUBLIC_DEV_KEYS.has(value.toLowerCase())) continue;
       if (rule.id === 'mnemonic' && /test test test test test test test test test test test junk/.test(match[0])) continue;
       if (rule.id === 'url-credentials' && PLACEHOLDER.test(match[0])) continue;
-      if (rule.id === 'rpc-api-key' && PLACEHOLDER.test(value)) continue;
+      if (rule.id === 'rpc-api-key' && (PLACEHOLDER.test(value) || PUBLIC_RPC_KEYS.has(value))) continue;
       const line = text.slice(0, match.index).split('\n').length;
       findings.push({ path, line, rule: rule.id });
     }

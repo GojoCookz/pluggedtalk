@@ -1,150 +1,125 @@
 # Plugged — developer handoff for Merc
 
-> Historical planner-only handoff. Superseded by [MVP-HANDOFF.md](MVP-HANDOFF.md), which
-> documents the implemented Carbon-backed launch flow and remaining registry-owner approvals.
+Updated 2026-11-03 UTC. **This is the single entry point.** It replaces the 2026-10-31 planner
+handoff. `MVP-HANDOFF.md` keeps the detailed Carbon launch notes (pair approvals, economics,
+fork evidence) and `PLATFORM-STATUS.md` keeps the per-feature ledger.
 
-Prepared 2026-10-31 UTC. This is a runnable preview and source handoff, **not a deployed
-or production-ready launchpad**. No launch, trade, claim, approval or deployment was sent.
+Plugged is a runnable, tested source handoff for a Robinhood Chain (4663) token launchpad built on
+the existing Carbon engine. It is **not deployed and not production-ready**. No mainnet launch,
+trade, claim, approval, deployment or ownership transfer was sent while building or testing it.
 
-## 1. Start the delivered ZIP
+## 1. Run it
 
-Extract the entire ZIP, install Bun (tested with 1.3.9; https://bun.sh), and open a terminal
-inside `plugged-merc/`:
+Install Bun 1.3.9 (https://bun.sh). From the extracted package:
 
 ```sh
-bun run start
+bun run start                 # bundled backend + frozen frontend, http://localhost:4317
 ```
 
-Open http://localhost:4317/#create. The ZIP includes the frozen frontend and a bundled
-backend; this preview requires no package installation. It must be served, not opened
-as an HTML file. Keep the terminal running. `PORT` overrides 4317. The server listens on
-loopback; put an HTTPS reverse proxy or tunnel in front when sharing it.
-
-For source development, install the pinned dependency and rebuild:
+For development:
 
 ```sh
 bun install --frozen-lockfile
-bun test test/
-bun run build
-bun run start
+bun test test/                # unit + service tests (Anvil suites skip unless enabled)
+bun run build                 # rebuild the frozen frontend + backend bundle
+bun run dev                   # server.ts from source
 ```
 
-`bun run dev` runs the source backend after installing dependencies; it still serves
-the frozen frontend, so rebuild after frontend changes. `bun run build` refreshes both
-frontend and bundled backend in this archive. No Hood checkout is needed.
+Contracts (Foundry; tested with forge 1.5.1): `cd contracts && forge test`. Fork tests need
+`PLUGGED_FORK=true` and an archive RPC. Anvil integration suites need `anvil` on PATH and
+`PLUGGED_VAULT_INTEGRATION=1`, `PLUGGED_ADVANCED_INTEGRATION=1` or `PLUGGED_PROGRAMS_INTEGRATION=1`.
 
-For contract tests, install Foundry (https://getfoundry.sh), then:
+Browser checks (`tools/platform-browser-check.mjs`, `tools/launch-browser-check.mjs`) need
+playwright-core, @accesslint/core and Chromium, set via `PLAYWRIGHT_MODULE`, `ACCESSLINT_ENGINE`,
+`CHROME_PATH`, `PLUGGED_URL`. On Windows run them with **Node**: under Bun 1.3.9 Playwright's
+pipe launch timed out on 2026-11-03 while Node launched in 343 ms (measured).
 
-```sh
-cd contracts
-forge test -vv
-forge fmt --check
-forge build --sizes
-```
+## 2. What works (tested, not live)
 
-OpenZeppelin and forge-std source dependencies are included under `contracts/lib/` with
-their licenses and commit provenance. Compiler is Solidity 0.8.26, Cancun EVM. Foundry may
-need internet access to obtain the compiler. Windows coverage had an import-separator
-failure in the original workspace; no coverage percentage is claimed.
+| Area | State |
+|---|---|
+| Launch (`#create`) | Wallet-signed Carbon launches: USD-targeted opening, quote selection, simulation, approvals limited to the purchase, receipt-verified listing, restart recovery |
+| ETH funding | LI.FI native-to-ERC20 route, calldata decoded and bound; **new:** output must be within 5% of the on-chain ETH/USDG v4 pool (USDG) or 1:1 (WETH) |
+| Trading | Quotes, exact approvals, buy/sell, replacement/cancel recovery with compare-and-set status writes |
+| Rewards, programs, fee vault, media, advanced launch | Service + UI connected with honest "unavailable" states; nothing deployed, so they fail closed |
+| UI | Light/dark, English/Spanish, 0 AccessLint findings on 13 audited states, mobile 390 px |
+| Ops | systemd units (hardened), Caddy, backup/restore drill, preflight, health probe |
 
-## 2. Product decisions already implemented
+Activation still needs: Carbon registry owner approvals for 438 of 469 pairs, deployed and
+verified profiles for the advanced/rewards/program contracts, an image-pinning provider, a host
+with a domain, and an Alchemy (or other dedicated) RPC.
 
-- Robinhood chain **4663**, native ETH input.
-- Fixed **$2,500 USD opening FDV** across quote assets; one-billion-token full supply.
-- One **direct Uniswap V4** launch plan. Default **$40,000 USD FDV milestone**, editable;
-  the milestone does not move liquidity to another pool.
-- Hybrid plans divide supply across 2–4 independent pools at the same USD opening FDV.
-- 1% base fee model, 30% of that base fee to platform (0.30% of volume), optional creator
-  surcharge 0–10%; developer/community percentages divide post-platform revenue.
-- Up to 100 wallet/X/GitHub recipients. Social allocation is separate from fundraising.
-- Fundraising, failed-goal refunds and separately funded trader cashback plans.
-- Proposed 3% wallet cap. No referrals. Anti-copy identity is normalized name + ticker +
-  economic settings; the same name/ticker with different settings is permitted.
-- White/green, light/dark, English/Spanish, local draft save/edit/delete/export.
-- Plugged-only discovery; no borrowed Carbon launches. Catalog: 469 unique assets,
-  including 203 issuer stock addresses; 365 provider-observed pools. Catalog inclusion
-  does not guarantee a route or future on-chain approval.
+## 3. Configuration
 
-## 3. Architecture and source map
+Copy `.env.example` to `.env` for local use; production uses `ops/service.env.example` and
+`ops/secrets.env.example` under `/etc/plugged/` (Bun's dotenv loading is disabled there).
 
-```text
-Browser (web/ → dist/)
-  ├── localStorage drafts, themes, language; wallet address connection only
-  └── Bun HTTP server (server.ts → server.bundle.js)
-        ├── lib/plan, economics, fingerprint: validation and identity
-        ├── lib/market-services, usd: LI.FI prices and ETH funding quotes
-        ├── lib/recipients, social-service: Bags identity resolution + HMAC receipts
-        └── data/: address catalog and provenance-bearing research snapshots
+| Variable | Purpose |
+|---|---|
+| `NODE_ENV` | `production` enables the strict origin gate (below) |
+| `PORT` | default 4317, binds 127.0.0.1 only |
+| `PLUGGED_PUBLIC_ORIGIN` | exact `https://` origin. **Required in production: the server exits without it** |
+| `PLUGGED_RPC_URL` | Robinhood RPC; public default is rate limited, use Alchemy in production |
+| `PLUGGED_DB_PATH` | SQLite path; one service instance per database |
+| `PLUGGED_LAUNCH_ENABLED` | `true` allows wallet signing for launches/trades |
+| `PLUGGED_PROGRAMS_ENABLED`, `PLUGGED_PROGRAMS_MANIFEST`, `PLUGGED_PROGRAMS_DB_PATH` | program signing gate and trusted deployment manifest |
+| `PLUGGED_ADVANCED_PROFILE` | verified advanced deployment profile; blank = unavailable |
+| `PLUGGED_PINATA_JWT` | server-only image pinning; blank disables uploads |
+| `BAGS_API_KEY`, `PLUGGED_SOCIAL_RECEIPT_SECRET` | social onboarding (optional) |
+| `PLUGGED_BACKUP_DIR` | private directory for the backup job |
 
-contracts/src/ (tested, undeployed)
-  ├── PluggedFeeSplitter: fixed recipients, cumulative claims
-  ├── PluggedCampaign: escrow, deadline, beneficiary payment or contributor refunds
-  ├── PluggedCashback: separately funded EIP-712 cumulative vouchers
-  └── PluggedLaunchRegistry: authorized-factory anti-copy registration
-```
+The server never needs or accepts a wallet private key. Users sign in their own wallets.
 
-API: `GET /api/config`, `/api/assets`, `/api/markets`, `/api/valuation`,
-`/api/readiness`, `/api/pons-reference`; `POST /api/plans/validate`, `/api/plans/prepare`,
-`/api/recipients/resolve`, `/api/routes/quote`. The server exposes only the frontend file
-allowlist and these APIs, not source files or secrets. There is no database or publisher.
+## 4. Deploy
 
-## 4. Integrations and secrets
+1. Ownership: copy `deployment-owner.example.json` to `runtime/deployment-owner.json` and fill
+   **your** owner and platform-recipient public addresses. The packaged template is blank on purpose.
+2. Run `bun tools/rh-chain-probe.mjs` (read-only). It must print "all pinned contracts and chain
+   parameters match"; it exits 1 if any Uniswap/Carbon code hash, the chain id, the 98,304-byte code
+   limit or a required opcode changed.
+3. Follow `workstreams/deployment.md` for the independent engine and `contracts/ADVANCED-API.md`
+   for the advanced factory. Simulate first, deploy from a hardware/keystore account, verify on
+   Blockscout, then write the verified profile path into `PLUGGED_ADVANCED_PROFILE`.
+4. Host: `ops/README.md` (systemd + Caddy + backups). `plugged.service` runs the production
+   preflight before every start.
 
-Copy `.env.example` to `.env`; never commit or share populated secrets.
+## 5. Standards and audit status
 
-- `BAGS_API_KEY`: server-only key from https://dev.bags.fm. Resolver explicitly requests
-  `chain=EVM` and may create a Privy embedded wallet. No live resolution was tested without
-  a key. Signed receipts bind provider ID, username and wallet, expiring after 24 hours.
-- `PLUGGED_SOCIAL_RECEIPT_SECRET`: persistent cryptographically random secret, at least
-  32 bytes. Without it, server restart invalidates existing resolution receipts.
-- `PORT`: optional, default 4317. No private signing key is required for the preview.
+- Robinhood Chain / Uniswap v4 review: `workstreams/standards-2026-11.md`. Measured on 4663:
+  ArbOS 61, Cancun+Prague+CLZ opcodes live, 98,304-byte code limit, 32M max tx gas, all pinned v4
+  addresses match Uniswap's published table. We stay on solc 0.8.26 + `cancun` on purpose.
+- Audit: `workstreams/audit-2026-11-02.md` (Fix status). All backend High/Medium items fixed;
+  M2 now has an on-chain cross-check for ETH/WETH/USDG; L5, L6, L9, L10 fixed on 2026-11-03.
+  Contract M-1 and L-4 fixed, L-2 reduced (50 recipients, 19.6M gas on Anvil, under the 32M cap).
 
-An API key does not establish rightful-owner access to a Bags-created wallet. Confirm the
-Bags/Privy cross-app onboarding contract and test a never-joined profile through receipt
-and use of funds. Bags claim APIs index Bags deployments, not Plugged splitters.
+## 6. Remaining risks (read before going live)
 
-ETH routing currently verifies **ETH → quote asset only**, returning `executable: false`.
-ETH means Robinhood native ETH, not Ethereum-L1 bridging. USD prices are indicative;
-retrieval time is not the underlying price timestamp. Do not treat cached prices as
-transaction-ready initialization inputs or assume bridged WETH has `deposit()`.
+- **Price**: stock-token quote assets have no independent on-chain price check yet (Chainlink
+  stock feeds exist on 4663; addresses were not verified, so not wired). They rely on LI.FI plus
+  a 10 ETH cap and a 1.5x jump guard.
+- **Carbon trust anchors**: the existing PairRegistry owner and oracle settings are outside our control.
+- **Batching**: approvals and trades are separate wallet prompts. EIP-5792 batching and Permit2
+  need a server batch type and a new router respectively (see standards doc).
+- **Finality**: "confirmed" means two blocks after the receipt (sequencer soft finality), not L1 finality.
+- **Languages**: only English and Spanish. The 13-locale work is not done (see `PLATFORM-STATUS.md`).
+- **Hosting**: systemd hardening is verified by `systemd-analyze verify` and tests, not on a real host.
+  Linux signal-driven shutdown is unvalidated.
+- **No external audit.** The 2026-11-02 review is a single internal pass without Slither or coverage.
 
-## 5. Work required before launch
+## 7. Verification (2026-11-03)
 
-1. Integrate and deploy the Plugged factory/token, strict 3% creator-and-wallet cap, atomic
-   registry registration and fee/holder distribution. The legacy launcher has exemptions.
-2. Implement atomic ETH → quote → launch-token routing with final output, recipient,
-   deadline and fee enforcement; fresh USD initialization and pinned-fork simulations.
-3. Complete social-owner onboarding, wallet access and Plugged-specific rewards reads/claims.
-4. Wire campaign funding/refunds, cashback funding/claims and authenticated trade attestation.
-5. Add metadata publication, launch indexing, Dexscreener matching and explicit terminal
-   milestone integration. No universal direct-V4 migration metadata standard was verified.
-6. Configure treasury/operational identities, production authentication/rate limits, persistent
-   services and deployment verification; independently review the complete money paths.
+Every packaged file's size and SHA-256 is listed in `PACKAGE-MANIFEST.json`. The packaged copy's
+own `bun test test/` also passed (313 pass, 0 fail).
 
-`GET /api/readiness` deliberately returns `ready: false`. Supplying credentials alone
-does not complete the missing contracts or integrations.
+| Check | Result |
+|---|---|
+| `bun test test/` | 313 pass, 24 skip (Anvil), 0 fail |
+| `forge test` (non-fork) | 100 pass, 0 fail, 6 skip (5 network fork tests + 1 skipped suite test) |
+| Anvil suites: vault / advanced / programs | 6 / 6 / 6 pass |
+| `bun run build` | 333,254 JS bytes |
+| `tools/platform-browser-check.mjs` | 24 checks, 13 AccessLint states, 0 errors |
+| `tools/launch-browser-check.mjs` | 12 checks, 0 errors |
+| `tools/rh-chain-probe.mjs` | all 11 pinned contracts and chain parameters match |
 
-## 6. Evidence and references
-
-Original workspace verification: **70 application tests**, **36 contract tests**,
-**28 browser checks**, all passing. Three invariants: 256 runs / 16,384 calls / zero reverts
-each. Automated accessibility: 24 combinations × 94 rules, zero violations/skipped.
-These are not full WCAG certification or an independent security audit. Packaging checks
-and exact hashes are recorded separately in `PACKAGE-MANIFEST.json` and `HANDOFF-CHECKS.json`.
-
-The ZIP includes `evidence/` with the existing browser/accessibility/provider reports and
-two focused screenshots using explicitly named test profiles. `PRODUCT.md`, `DESIGN.md`,
-`FEATURES.md`, `RESEARCH.md`, `ASSETS.md` and `VERIFICATION.md` preserve decisions and limits.
-`WORKSPACE-README.md` documents the original sibling-dependency setup; use this README
-instead for the standalone archive. The archive contains no `.env`, keys, wallet secrets,
-private chat export, unrelated project source, node_modules or Git history.
-
-- Bags EVM identity: https://docs.bags.fm/api-reference/get-fee-share-wallet.md
-- Bags Robinhood claims: https://docs.bags.fm/robinhood/claim-fees.md
-- Bags Solana claims: https://docs.bags.fm/how-to-guides/claim-fees.md
-- Pons mechanisms: https://docs.ponsfamily.com/docs and https://docs.ponsfamily.com/docs/v2
-- LI.FI quotes: https://docs.li.fi/api-reference/get-a-quote-for-a-token-transfer
-
-Pons' observed USDG parameters imply **39,641 USDG** terminal FDV, not a fixed dollar cap.
-Excluding locked excess produces **36,405 USDG**, an inference rather than verified display
-behavior. Plugged's $40,000 milestone is an explicit product choice.
+Browser checks ran against a fresh server on port 4328 with signing off and a temp database.
+Transactions in browser tests use a simulated wallet; none were broadcast.

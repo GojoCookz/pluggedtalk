@@ -1,5 +1,8 @@
 # Plugged — Carbon-backed launch MVP handoff
 
+> Start with [HANDOFF.md](HANDOFF.md) (updated 2026-11-03). This file keeps the detailed
+> Carbon launch notes from 2026-10-31; its test counts are historical.
+
 Updated 2026-10-31 UTC. This supersedes the earlier planner-only handoff. Plugged now
 prepares and submits wallet-signed launches to the existing Carbon Robinhood engine.
 No replacement launcher contract is required. No mainnet transaction was broadcast during
