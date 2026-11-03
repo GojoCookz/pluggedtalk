@@ -203,3 +203,18 @@ Unavailable / unfinished:
 3. A profile whose router bytecode differs from the pinned Carbon router stays read-only (trade
    refused) until it is reviewed and pinned.
 4. Fork end-to-end launch → trade → sweep → recover against a real advanced deployment.
+
+## Known limits (audit 2026-11-02)
+
+- **L-1 vest release and the 3% wallet cap.** Vesting uses Carbon's `MultiVestingVault`, whose
+  `release()` sends the whole vested amount. If anyone transfers tokens to the beneficiary so that
+  balance + vested amount exceeds the 3% cap, `release()` reverts until the beneficiary moves tokens
+  out. Partial release would need a change in Carbon's vault, not Plugged code, so this is documented
+  and shown on the Advanced launch page instead of fixed.
+- **L-2 recipient cap.** `MAX_RECIPIENTS` is 50 (was 100). Measured worst case, 4 markets x 50
+  recipients: 19,585,230 gas in `forge test --match-contract AdvancedGasRegression` (was 29.9M at
+  4 x 100), well under the ~32M Nitro block limit. Not yet measured on chain 4663 itself.
+- **L-3 duplicate registry.** The registry rejects only exact duplicates of name, ticker and
+  economics. Recipients are not part of the identity, so a leaked config can be launched first by
+  someone else with their own recipients, and a 1-wei economics change counts as a new launch.
+  Treat a launch as yours only when its confirmed recipients are yours.

@@ -28,7 +28,7 @@ hash, e.g. `keccak256("github:user")`, not an identity proof), and a CREATE2 `in
 
 | Function | Caller | Rule |
 |---|---|---|
-| `createContainer(recipient, currency, window, operator, inviteRef) → (id, inbox)` | anyone (becomes allocator) | `window` 0 → 30 d; bounded [7 d, 365 d]; recipient ≠ 0/vault/self/inbox; currency must be ETH or a contract |
+| `createContainer(recipient, currency, window, operator, inviteRef, salt) → (id, inbox)` | anyone (becomes allocator) | `window` 0 → 30 d; bounded [7 d, 365 d]; recipient ≠ 0/vault/self/inbox; currency must be ETH or a contract |
 | `deposit(id, amount)` | anyone | ERC-20 only; exact balance delta or revert (fee-on-transfer rejected) |
 | `depositNative(id)` | anyone | ETH containers only |
 | `sweepInbox(id)` | anyone | pulls inbox funds into the container; exact delta check |
@@ -62,8 +62,12 @@ make vault balance `≥`), `totalCredited == totalHeld + totalPaid`, and per con
 `PluggedFeeSplitter` and `PluggedAdvancedSplitter` push via `release(recipient)` with no deposit
 callback, so a container's **inbox address** is the value to put in a recipient slot:
 
-1. Creator calls `vault.createContainer(resolvedWallet, splitterCurrency, window, operator, ref)`
-   and reads the returned `inbox` (or precomputes it: CREATE2 by the vault, salt `bytes32(id)`).
+1. Creator picks a fresh `salt` and may precompute the inbox with
+   `vault.predictInbox(creator, resolvedWallet, splitterCurrency, salt)`, then calls
+   `vault.createContainer(resolvedWallet, splitterCurrency, window, operator, ref, salt)`. The inbox is
+   CREATE2 with salt `keccak256(abi.encode(caller, recipient, currency, salt))`; it never depends on the
+   global container id, so nobody else can create the precomputed inbox (audit 2026-11-02 M-1).
+   Do not precompute from `containerCount` - ids shift, inbox addresses do not.
 2. Use `inbox` as that recipient's address in the new splitter's constructor (`recipients[i]`).
 3. Anyone calls `splitter.release(inbox)`; funds wait in the inbox; `claim`/`reclaim` sweep it.
 
@@ -171,3 +175,11 @@ recipient-as-allocator, direct inbox forward), fee-on-transfer rejection.
   only); advanced launch itself is still unavailable (no factory profile).
 - `server.ts` and `web/app.js` received additive edits only (import, service, 4 routes, earnings
   composite); concurrent advanced-runtime edits were not touched.
+
+## Known limits (audit 2026-11-02)
+
+- **I-4 operator may equal allocator.** `createContainer` accepts `operator == msg.sender`. The
+  operator can only extend the deadline or return an unaccepted container to the allocator, so this
+  grants no new power, but the UI should not present the operator as an independent party.
+- **L-4 (campaigns, not the vault).** `PluggedCampaign` now refunds contributors when a successful
+  campaign is not paid out within `PAYOUT_GRACE` (30 days) after the deadline.

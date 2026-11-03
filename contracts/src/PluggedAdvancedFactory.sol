@@ -42,6 +42,8 @@ contract PluggedAdvancedFactory is IUnlockCallback, ReentrancyGuardTransient {
     uint16 public constant MAX_WALLET_BPS = 300;
     uint16 public constant BPS = 10_000;
     uint256 public constant MAX_MARKETS = 4;
+    /// @dev One splitter per market stores every recipient; 4 x 50 keeps max launch gas well under the Nitro block limit.
+    uint256 public constant MAX_RECIPIENTS = 50;
     IPoolManager public immutable poolManager;
     FeeHook public immutable feeHook;
     PairRegistry public immutable pairRegistry;
@@ -382,7 +384,7 @@ contract PluggedAdvancedFactory is IUnlockCallback, ReentrancyGuardTransient {
             if (m.creatorBps != 0) creatorEnabled = true;
         }
         uint256 count = p.recipients.length;
-        if (count != p.sharesBps.length || count > 100 || (creatorEnabled ? count == 0 : count != 0)) {
+        if (count != p.sharesBps.length || count > MAX_RECIPIENTS || (creatorEnabled ? count == 0 : count != 0)) {
             revert InvalidRecipients();
         }
         uint256 sum;

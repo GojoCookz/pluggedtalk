@@ -3,7 +3,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
-import { createPublicClient, createWalletClient, erc20Abi, http, keccak256, parseEther, zeroAddress } from '../../app/node_modules/viem/_esm/index.js';
+import { createPublicClient, createWalletClient, erc20Abi, http, keccak256, parseEther, toHex, zeroAddress } from '../../app/node_modules/viem/_esm/index.js';
+let saltNonce = 0;
 import { mnemonicToAccount } from '../../app/node_modules/viem/_esm/accounts/index.js';
 import { foundry } from '../../app/node_modules/viem/_esm/chains/index.js';
 import { FeeVaultService } from '../lib/fee-vault-service.mjs';
@@ -16,7 +17,7 @@ const accounts = Array.from({ length: 4 }, (_, addressIndex) => mnemonicToAccoun
 const [deployer, creator, dev, outsider] = accounts;
 const artifact = (source, name = source) => JSON.parse(readFileSync(new URL(`../contracts/out/${source}.sol/${name}.json`, import.meta.url), 'utf8'));
 const WRITE_ABI = [
-  { type: 'function', name: 'createContainer', stateMutability: 'nonpayable', inputs: [{ type: 'address' }, { type: 'address' }, { type: 'uint256' }, { type: 'address' }, { type: 'bytes32' }], outputs: [{ type: 'uint256' }, { type: 'address' }] },
+  { type: 'function', name: 'createContainer', stateMutability: 'nonpayable', inputs: [{ type: 'address' }, { type: 'address' }, { type: 'uint256' }, { type: 'address' }, { type: 'bytes32' }, { type: 'bytes32' }], outputs: [{ type: 'uint256' }, { type: 'address' }] },
   { type: 'function', name: 'deposit', stateMutability: 'nonpayable', inputs: [{ type: 'uint256' }, { type: 'uint256' }], outputs: [] },
   { type: 'function', name: 'depositNative', stateMutability: 'payable', inputs: [{ type: 'uint256' }], outputs: [] },
 ];
@@ -49,7 +50,7 @@ integration('fee vault service against a real ephemeral Anvil deployment', () =>
   const mined2 = mined;
   async function create(currency, window = 0n) {
     const before = await client.readContract({ address: vault, abi: artifact('PluggedFeeVault').abi, functionName: 'containerCount' });
-    await mined(wallets[1].writeContract({ address: vault, abi: WRITE_ABI, functionName: 'createContainer', args: [dev.address, currency, window, zeroAddress, `0x${'0'.repeat(64)}`] }));
+    await mined(wallets[1].writeContract({ address: vault, abi: WRITE_ABI, functionName: 'createContainer', args: [dev.address, currency, window, zeroAddress, `0x${'0'.repeat(64)}`, toHex(++saltNonce, { size: 32 })] }));
     return String(before + 1n);
   }
   async function act(index, action, id, extra = {}) {

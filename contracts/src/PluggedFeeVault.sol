@@ -137,7 +137,16 @@ contract PluggedFeeVault is ReentrancyGuardTransient {
     /// @param window Seconds until expiry; 0 selects DEFAULT_WINDOW. Bounded [MIN_WINDOW, MAX_WINDOW].
     /// @param operator Optional (address(0) = none). May only extend the deadline or return an
     ///        unaccepted container to the allocator. Never touches accepted balances.
-    function createContainer(address recipient, address currency, uint256 window, address operator, bytes32 inviteRef)
+    /// @param salt Caller-chosen. The inbox address depends only on (caller, recipient, currency, salt),
+    ///        never on the global id, so a precomputed inbox cannot be captured by another creator.
+    function createContainer(
+        address recipient,
+        address currency,
+        uint256 window,
+        address operator,
+        bytes32 inviteRef,
+        bytes32 salt
+    )
         external
         nonReentrant
         returns (uint256 id, address inbox)
@@ -149,7 +158,7 @@ contract PluggedFeeVault is ReentrancyGuardTransient {
         if (window == 0) window = DEFAULT_WINDOW;
         if (window < MIN_WINDOW || window > MAX_WINDOW) revert InvalidWindow();
         id = ++containerCount;
-        inbox = address(new PluggedFeeVaultInbox{salt: bytes32(id)}(currency));
+        inbox = address(new PluggedFeeVaultInbox{salt: _inboxSalt(msg.sender, recipient, currency, salt)}(currency));
         isInbox[inbox] = true;
         uint40 deadline = uint40(block.timestamp + window);
         Container storage c = _containers[id];
@@ -311,6 +320,27 @@ contract PluggedFeeVault is ReentrancyGuardTransient {
     }
 
     // ---------------------------------------------------------------- internals
+
+    /// @notice Inbox address createContainer will deploy for this allocator and parameters.
+    function predictInbox(address allocator, address recipient, address currency, bytes32 salt)
+        external
+        view
+        returns (address)
+    {
+        bytes32 initCode = keccak256(abi.encodePacked(type(PluggedFeeVaultInbox).creationCode, abi.encode(currency)));
+        bytes32 digest = keccak256(
+            abi.encodePacked(bytes1(0xff), address(this), _inboxSalt(allocator, recipient, currency, salt), initCode)
+        );
+        return address(uint160(uint256(digest)));
+    }
+
+    function _inboxSalt(address allocator, address recipient, address currency, bytes32 salt)
+        private
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(allocator, recipient, currency, salt));
+    }
 
     function _existing(uint256 id) private view returns (Container storage c) {
         c = _containers[id];

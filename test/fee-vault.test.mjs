@@ -63,7 +63,7 @@ function createClient(overrides = {}) {
   const client = {
     calls, getBlockNumber: async () => 10n, getChainId: async () => 4663, getBlock: async () => ({ timestamp: 1000n }),
     getCode: async ({ address: a }) => (a.toLowerCase() === vault || a.toLowerCase() === token ? runtime : '0x'),
-    readContract: async ({ functionName }) => ({ containerCount: 4n, decimals: 6 })[functionName],
+    readContract: async ({ functionName }) => ({ containerCount: 4n, decimals: 6, predictInbox: inbox })[functionName],
     simulateContract: async call => { calls.push(call); return { result: [5n, inbox] }; },
     estimateContractGas: async () => 100000n, ...overrides,
   };
@@ -90,11 +90,16 @@ test('create prepares a pinned simulation and predicts id and inbox', async () =
   const prep = await s.prepare(createInput({ windowDays: 14 }));
   expect(prep).toMatchObject({ action: 'create', containerId: null, transaction: { from: account, to: vault, value: '0x0' },
     expected: { event: 'ContainerCreated', recipient: payee, currency: token, symbol: 'USDC', decimals: 6, windowDays: 14, predictedId: '5', predictedInbox: inbox } });
-  expect(client.calls[0]).toMatchObject({ functionName: 'createContainer', blockNumber: 10n, args: [payee, token, 14n * 86400n, zeroAddress, `0x${'0'.repeat(64)}`] });
+  expect(client.calls[0]).toMatchObject({ functionName: 'createContainer', blockNumber: 10n, args: [payee, token, 14n * 86400n, zeroAddress, `0x${'0'.repeat(64)}`, prep.expected.salt] });
+  expect(prep.expected.salt).toMatch(/^0x[0-9a-f]{64}$/);
+  const other = await s.prepare(createInput({ windowDays: 14 }));
+  expect(other.expected.salt).not.toBe(prep.expected.salt);
   const decoded = decodeFunctionData({ abi: FEE_VAULT_ABI, data: prep.transaction.data });
   expect(decoded.functionName).toBe('createContainer');
   const shifted = new FeeVaultService({ client: createClient({ simulateContract: async () => ({ result: [7n, inbox] }) }), manifest: createManifest });
-  await expect(shifted.prepare(createInput())).rejects.toThrow('container count');
+  await expect(shifted.prepare(createInput())).rejects.toThrow('vault prediction');
+  const captured = new FeeVaultService({ client: createClient({ simulateContract: async () => ({ result: [5n, '0x' + '7'.repeat(40)] }) }), manifest: createManifest });
+  await expect(captured.prepare(createInput())).rejects.toThrow('vault prediction');
   const reverting = new FeeVaultService({ client: createClient({ simulateContract: async () => { const e = new Error('reverted'); e.cause = { data: { errorName: 'InvalidRecipient' } }; throw e; } }), manifest: createManifest });
   await expect(reverting.prepare(createInput())).rejects.toThrow('Vault rejected create (InvalidRecipient).');
 });

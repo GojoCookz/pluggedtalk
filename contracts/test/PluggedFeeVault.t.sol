@@ -103,6 +103,11 @@ contract PluggedFeeVaultTest is Test {
     address operator = makeAddr("operator");
     address outsider = makeAddr("outsider");
     bytes32 constant REF = keccak256("github:octocat");
+    uint256 private saltNonce;
+
+    function _salt() internal returns (bytes32) {
+        return bytes32(++saltNonce);
+    }
 
     function setUp() public {
         vault = new PluggedFeeVault();
@@ -114,7 +119,7 @@ contract PluggedFeeVaultTest is Test {
 
     function _create(address currency, uint256 window, address op) internal returns (uint256 id, address inbox) {
         vm.prank(creator);
-        (id, inbox) = vault.createContainer(dev, currency, window, op, REF);
+        (id, inbox) = vault.createContainer(dev, currency, window, op, REF, _salt());
     }
 
     function _fund(uint256 id, uint256 amount) internal {
@@ -141,17 +146,17 @@ contract PluggedFeeVaultTest is Test {
     function test_create_windowBounds() public {
         vm.startPrank(creator);
         vm.expectRevert(PluggedFeeVault.InvalidWindow.selector);
-        vault.createContainer(dev, address(token), 7 days - 1, address(0), REF);
+        vault.createContainer(dev, address(token), 7 days - 1, address(0), REF, _salt());
         vm.expectRevert(PluggedFeeVault.InvalidWindow.selector);
-        vault.createContainer(dev, address(token), 365 days + 1, address(0), REF);
-        vault.createContainer(dev, address(token), 7 days, address(0), REF);
-        vault.createContainer(dev, address(token), 365 days, address(0), REF);
+        vault.createContainer(dev, address(token), 365 days + 1, address(0), REF, _salt());
+        vault.createContainer(dev, address(token), 7 days, address(0), REF, _salt());
+        vault.createContainer(dev, address(token), 365 days, address(0), REF, _salt());
         vm.expectRevert(PluggedFeeVault.InvalidRecipient.selector);
-        vault.createContainer(address(0), address(token), 0, address(0), REF);
+        vault.createContainer(address(0), address(token), 0, address(0), REF, _salt());
         vm.expectRevert(PluggedFeeVault.InvalidRecipient.selector);
-        vault.createContainer(creator, address(token), 0, address(0), REF);
+        vault.createContainer(creator, address(token), 0, address(0), REF, _salt());
         vm.expectRevert(PluggedFeeVault.InvalidCurrency.selector);
-        vault.createContainer(dev, makeAddr("eoa"), 0, address(0), REF);
+        vault.createContainer(dev, makeAddr("eoa"), 0, address(0), REF, _salt());
         vm.stopPrank();
     }
 
@@ -378,7 +383,7 @@ contract PluggedFeeVaultTest is Test {
     function test_native_rejectingRecipientKeepsFunds() public {
         RejectingReceiver bad = new RejectingReceiver();
         vm.prank(creator);
-        (uint256 id,) = vault.createContainer(address(bad), address(0), 0, address(0), REF);
+        (uint256 id,) = vault.createContainer(address(bad), address(0), 0, address(0), REF, _salt());
         vault.depositNative{value: 1 ether}(id);
         bad.call(vault, abi.encodeCall(PluggedFeeVault.accept, (id)));
         vm.expectRevert(PluggedFeeVault.NativePaymentFailed.selector);
@@ -407,7 +412,7 @@ contract PluggedFeeVaultTest is Test {
     function test_reentrancy_nativeClaim() public {
         ReentrantReceiver r = new ReentrantReceiver();
         vm.prank(creator);
-        (uint256 id,) = vault.createContainer(address(r), address(0), 0, address(0), REF);
+        (uint256 id,) = vault.createContainer(address(r), address(0), 0, address(0), REF, _salt());
         vault.depositNative{value: 1 ether}(id);
         r.setup(vault, abi.encodeCall(PluggedFeeVault.claim, (id)));
         r.call(abi.encodeCall(PluggedFeeVault.accept, (id)));
@@ -421,7 +426,7 @@ contract PluggedFeeVaultTest is Test {
     function test_reentrancy_nativeReclaim() public {
         ReentrantReceiver r = new ReentrantReceiver();
         vm.prank(address(r));
-        (uint256 id,) = vault.createContainer(dev, address(0), 7 days, address(0), REF);
+        (uint256 id,) = vault.createContainer(dev, address(0), 7 days, address(0), REF, _salt());
         vault.depositNative{value: 1 ether}(id);
         r.setup(vault, abi.encodeCall(PluggedFeeVault.reclaim, (id)));
         vm.warp(block.timestamp + 7 days);
@@ -539,6 +544,7 @@ contract PluggedFeeVaultTest is Test {
 // ---------------------------------------------------------------------- invariants
 
 contract VaultHandler is Test {
+    uint256 private saltNonce;
     PluggedFeeVault public vault;
     VaultToken public token;
     address[3] public actors;
@@ -564,7 +570,7 @@ contract VaultHandler is Test {
         address recipient = actors[(a + 1 + (r % 2)) % 3];
         window = bound(window, 7 days, 365 days);
         vm.prank(allocator);
-        (uint256 id,) = vault.createContainer(recipient, address(token), window, actors[(a + 2) % 3], 0);
+        (uint256 id,) = vault.createContainer(recipient, address(token), window, actors[(a + 2) % 3], 0, bytes32(++saltNonce));
         ids.push(id);
     }
 

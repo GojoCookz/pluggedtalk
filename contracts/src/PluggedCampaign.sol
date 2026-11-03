@@ -3,12 +3,16 @@ pragma solidity ^0.8.26;
 import {ProgramPayments} from "./ProgramPayments.sol";
 
 /// @notice Fixed-beneficiary all-or-nothing funding, with permissionless fixed-address refunds.
+///         A successful campaign not paid out within PAYOUT_GRACE after the deadline becomes refundable.
 /// @dev No admin, cancellation, early payout, arbitrary treasury or cashback access to escrow.
 ///      Only recorded contributions count toward the target; direct transfers do not force success.
 contract PluggedCampaign is ProgramPayments {
     address public immutable BENEFICIARY;
     uint256 public immutable GOAL;
     uint256 public immutable DEADLINE;
+    /// @notice After DEADLINE + PAYOUT_GRACE an unpaid successful campaign refunds contributors, so a
+    ///         beneficiary that rejects or is blocklisted for the currency cannot lock escrow forever.
+    uint256 public constant PAYOUT_GRACE = 30 days;
     uint256 public totalContributed;
     uint256 public totalRefunded;
     bool public paid;
@@ -41,14 +45,17 @@ contract PluggedCampaign is ProgramPayments {
     }
 
     function payout() external nonReentrant {
-        if (block.timestamp < DEADLINE || totalContributed < GOAL || paid) revert WrongPhase();
+        if (block.timestamp < DEADLINE || block.timestamp >= DEADLINE + PAYOUT_GRACE || totalContributed < GOAL || paid) {
+            revert WrongPhase();
+        }
         paid = true;
         _pay(BENEFICIARY, totalContributed);
         emit Paid(BENEFICIARY, totalContributed);
     }
 
     function refund(address contributor) external nonReentrant {
-        if (block.timestamp < DEADLINE || totalContributed >= GOAL) revert WrongPhase();
+        if (block.timestamp < DEADLINE) revert WrongPhase();
+        if (totalContributed >= GOAL && (paid || block.timestamp < DEADLINE + PAYOUT_GRACE)) revert WrongPhase();
         uint256 amount = contributions[contributor];
         if (amount == 0) revert NothingToRefund();
         contributions[contributor] = 0;

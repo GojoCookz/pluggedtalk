@@ -305,7 +305,7 @@ const SERVER_ERRORS_ES = [
   [/^Simulation is not a payout guarantee\.$/, () => 'La simulación no garantiza el pago.'],
   [/^After acceptance the allocator can never reclaim this container\.$/, () => 'Tras aceptar, el asignador nunca podrá recuperar este contenedor.'],
   [/^Funds move only to the fixed recipient or allocator\.$/, () => 'Los fondos solo van al destinatario o asignador fijados.'],
-  [/^The predicted inbox is final only after confirmation; use the confirmed inbox as the fee recipient\.$/, () => 'El buzón previsto solo es definitivo tras la confirmación; usa el buzón confirmado como receptor.'],
+  [/^The inbox address is fixed for this preparation and belongs only to a container created by this wallet; the container id is final after confirmation\.$/, () => 'La dirección del buzón queda fijada en esta preparación y solo pertenece a un contenedor creado por esta billetera; el número de contenedor es definitivo tras la confirmación.'],
   [/^Unaccepted funds return to this wallet only after decline or expiry\.$/, () => 'Los fondos no aceptados vuelven a esta billetera solo tras un rechazo o el vencimiento.'],
   [/^Request failed\.?.*$/, () => 'Error de solicitud. Reintenta.'],
 ];
