@@ -42,6 +42,13 @@ Owner asks: "can u make landing like this" (Bags sign-in screenshot). Brief: `wo
   labels at 390 → inline pill; labels wrapped → tighter mobile card padding; ja subtitle broke
   mid-word → `text-wrap: balance`.
 
+## Preview
+
+- Commit `3939428`. Preview on 4317 restarted with the new build (`PLUGGED_LAUNCH_ENABLED=true`,
+  `/api/health` ok, `/api/auth/providers` 200). The tunnel
+  https://db795e31f4f8f9b8.vqbz7kk2yfov.opentunnel.xyz was down at restart (transport error), so
+  `PLUGGED_PUBLIC_ORIGIN` was not set; set it again when a new tunnel is opened.
+
 ## Known limits
 
 - Social/email sign-in is not available; the buttons say so.
