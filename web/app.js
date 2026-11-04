@@ -13,6 +13,7 @@ import { rewardsScreen } from './rewards.js';
 import { feeVaultScreen } from './fee-vault.js';
 import { programsScreen } from './programs.js';
 import { advancedDiscover, advancedTokenScreen, advancedRewardsScreen } from './advanced-markets.js';
+import { welcomeScreen, legalScreen } from './welcome.js';
 
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -45,6 +46,7 @@ const liveLaunch=launchScreen({...screenOptions,onConfirmed:()=>loadMarkets()});
 const advancedLaunch=advancedLaunchScreen({...screenOptions,onConfirmed:()=>loadMarkets()});
 const liveTrading=tradingScreen(screenOptions),liveRewards=rewardsScreen(screenOptions),livePrograms=programsScreen(screenOptions);
 const liveVault=feeVaultScreen(screenOptions);
+const welcome=welcomeScreen({...screenOptions,t:(key,args)=>t(key,args)}),legal=legalScreen({t:(key,args)=>t(key,args),esc});
 // Advanced launches: separate server-verified source, never merged into the baseline index.
 const advancedList=advancedDiscover({language:()=>lang,esc,onChange:()=>updateAdvanced()});
 const advancedToken=advancedTokenScreen({...screenOptions,trading:tradingScreen(screenOptions)}),advancedRewards=advancedRewardsScreen(screenOptions);
@@ -297,8 +299,12 @@ function updateAssets() {
 function render() {
   activeScreen?.destroy();activeScreen=null;
   nav(); const [page,address] = route();
-  if (page==='create') mountScreen(liveLaunch,$('#main')); else if(page==='advanced') mountScreen(advancedLaunch,$('#main')); else if(page==='planner') create(); else if(page==='earnings') mountScreen(liveEarnings,$('#main')); else if(page==='programs') mountScreen(livePrograms,$('#main')); else if(page==='assets') assetsView(); else if(page==='guide') guide(); else if(page==='token') tokenDetail(address); else if(page==='advanced-token') mountScreen(advancedToken,$('#main'),address); else discover();
-  if(page!=='token')document.title=`${t(page==='planner'?'plannerTitle':page==='advanced-token'?'advanced':['create','advanced','earnings','programs','assets','guide'].includes(page)?page:'discover')} · Plugged`;
+  const entry=['welcome','terms','privacy'].includes(page);
+  document.body.dataset.route=entry?'welcome':'app';
+  if(!entry){try{persist('plugged.welcomed',true);}catch{}}
+  if (page==='welcome') mountScreen(welcome,$('#main')); else if(page==='terms'||page==='privacy') mountScreen(legal,$('#main'),page); else if (page==='create') mountScreen(liveLaunch,$('#main')); else if(page==='advanced') mountScreen(advancedLaunch,$('#main')); else if(page==='planner') create(); else if(page==='earnings') mountScreen(liveEarnings,$('#main')); else if(page==='programs') mountScreen(livePrograms,$('#main')); else if(page==='assets') assetsView(); else if(page==='guide') guide(); else if(page==='token') tokenDetail(address); else if(page==='advanced-token') mountScreen(advancedToken,$('#main'),address); else discover();
+  if(entry)document.title=`${t(page==='welcome'?'welcome.signIn':page==='terms'?'legal.termsTitle':'legal.privacyTitle')} · Plugged`;
+  else if(page!=='token')document.title=`${t(page==='planner'?'plannerTitle':page==='advanced-token'?'advanced':['create','advanced','earnings','programs','assets','guide'].includes(page)?page:'discover')} · Plugged`;
 }
 async function connect(selected) {
   const dialog = $('#wallet-dialog');
@@ -320,6 +326,7 @@ async function connect(selected) {
     };
     provider.on?.('accountsChanged',providerHandlers.accounts); provider.on?.('chainChanged',providerHandlers.chain); provider.on?.('disconnect',providerHandlers.disconnect);
     dialog.close();invalidateTransactions();nav();
+    if(route()[0]==='welcome')location.hash='discover';
     const chain = await selected.request({method:'eth_chainId'}); if(provider===selected)toast(t(Number(chain)===NETWORK.id?'walletConnected':'wrongChain'));
   } catch { toast(t('walletRejected')); }
 }
@@ -429,4 +436,6 @@ document.addEventListener('click',async event=>{
   if(el.dataset.provider){const selected=providers.get(el.dataset.provider);if(selected)await connect(selected.provider);}
 });
 if (!(await loadLocale(lang))) lang = 'en';
+// First-time visitors land on sign-in; returning visitors and deep links go straight in.
+if(!location.hash&&!readStorage('plugged.welcomed',false))history.replaceState(null,'','#welcome');
 render(); loadMarkets();

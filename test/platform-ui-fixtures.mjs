@@ -64,6 +64,7 @@ export async function mockPlatform(page){
     if(path==='/api/programs/voucher')return send({voucher:{testOnly:true,signature:'0x1234'}});
     // Undeployed advanced engine and fee vault, matching the real server's unconfigured responses.
     if(path==='/api/advanced/markets')return send({chainId:4663,engine:'plugged-advanced-v1',tokens:[],unavailable:[],truncated:false,available:false,reason:'No advanced deployment profile is configured. Advanced launch is unavailable.'});
+    if(path==='/api/auth/providers')return send({providers:['x','tiktok','kick','github','google','email','apple'].map(id=>({id,configured:false,startUrl:null})),wallet:{configured:true}});
     if(path==='/api/advanced/config')return send({available:false,reason:'No advanced deployment profile is configured.'});
     if(path==='/api/vault/status')return send({deployed:false,chainId:4663,address:null,reason:'Fee vault is not deployed or not configured on this server.',windows:{minDays:7,defaultDays:30,maxDays:365}});
     if(path==='/api/launches/prepare'){

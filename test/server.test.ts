@@ -25,3 +25,4 @@ test('launch preparation refuses unresolved profiles and reports deployment bloc
   const response=await send({...p,recipients:[{address:'0x1111111111111111111111111111111111111111',bps:10000}]});expect(response.status).toBe(200);
   const data=await response.json();expect(data.ready).toBe(false);expect(data.recipients.claimers).toHaveLength(1);expect(data.plan.economics.openingMarketCapUsd).toBe('2500');
 });
+test('auth providers report none configured until an integration registers one',async()=>{const response=await fetch(base+'/api/auth/providers');expect(response.status).toBe(200);const body=await response.json();expect(body.providers.map((p:any)=>p.id)).toEqual(['x','tiktok','kick','github','google','email','apple']);expect(body.providers.every((p:any)=>p.configured===false&&p.startUrl===null)).toBe(true);expect(body.wallet.configured).toBe(true);});

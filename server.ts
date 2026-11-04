@@ -72,6 +72,13 @@ export function createPlatformServer(options: any = {}) {
     scope: 'process-liveness', note: 'This endpoint does not assert deployment or provider readiness.' }), { exempt: true });
   get('/api/config', () => ({ network: { ...NETWORK, launcher: carbonDeployment.deployment.launcher }, policy: POLICY, quotes: QUOTES,
     launchEnabled, programsEnabled, engine: carbonDeployment, reason: launchEnabled ? null : 'Launch signing is disabled by the operator.' }));
+  // Sign-in providers. None ship today: a provider counts as configured only when an integration
+  // registers it with a real start URL (see HANDOFF.md "Social sign-in"), so the UI never renders a dead button.
+  get('/api/auth/providers', () => {
+    const registered = new Map<string, string>((options.authProviders ?? []).filter((p: any) => typeof p?.id === 'string' && typeof p.startUrl === 'string' && p.startUrl.startsWith('/')).map((p: any) => [p.id, p.startUrl]));
+    return { providers: ['x', 'tiktok', 'kick', 'github', 'google', 'email', 'apple'].map(id => ({ id, configured: registered.has(id), startUrl: registered.get(id) ?? null })),
+      wallet: { configured: true, note: 'Wallet connection happens in the browser; the server holds no keys or sessions.' } };
+  });
   get('/api/assets', () => assetCatalog);
   get('/api/engine/pairs', () => carbonPairs);
   get('/api/readiness', () => ({ ready: launchEnabled && carbonPairs.coverage.pendingApproval === 0 && carbonPairs.coverage.failed === 0,

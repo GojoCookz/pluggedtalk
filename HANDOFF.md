@@ -112,6 +112,32 @@ The server never needs or accepts a wallet private key. Users sign in their own 
 - **Hosting**: systemd hardening is verified by `systemd-analyze verify` and tests, not on a real host.
   Linux signal-driven shutdown is unvalidated.
 - **No external audit.** The 2026-11-02 review is a single internal pass without Slither or coverage.
+- **Sign-in is wallet-only.** First-time visitors land on `#welcome` (see `workstreams/landing.md`).
+  Only "Connect wallet" and "Browse without signing in" work. X, TikTok, Kick, GitHub, Google, Email
+  and Apple render disabled with "Soon" because `GET /api/auth/providers` reports none configured.
+  `/terms` and `/privacy` (`#terms`, `#privacy`) are drafts pending legal review, not in force.
+
+### Social sign-in: what a provider integration needs
+
+The UI enables a provider only when `/api/auth/providers` returns `configured: true` and a same-origin
+`startUrl`; the server derives that from `createPlatformServer({ authProviders: [{ id, startUrl }] })`.
+Nothing registers today. To ship one:
+
+1. **Pick the path.** A hosted provider (Privy, Dynamic, Web3Auth) bundles OAuth, email OTP and embedded
+   wallets but adds a vendor and its SDK; direct OAuth needs an app per provider (X, GitHub, Google,
+   TikTok, Kick, Apple Sign in, plus an email sender for magic links/OTP).
+2. **Credentials** as env/secret files, never in the repo: client id/secret per provider, Apple key id +
+   team id + private key, email SMTP/API key. Add them to the secret scan and `deployment-check`.
+3. **Routes**: `GET /api/auth/<id>/start` (PKCE + `state`, redirect), `GET /api/auth/<id>/callback`
+   (verify `state`, exchange code, fetch the stable provider user id), `POST /api/auth/logout`.
+4. **Session**: server-side session row in SQLite, `HttpOnly; Secure; SameSite=Lax` cookie, rotation and
+   expiry, CSRF protection on every POST that relies on the cookie, rate limits on start/callback.
+5. **Bind identity to a wallet**: the user signs an EIP-4361 (SIWE) message with the wallet; store
+   `(provider, providerUserId) -> wallet` with the signature. Fee claims and fee-vault containers must keep
+   paying the wallet, never the session, and the social recipient resolver (`/api/recipients/resolve`)
+   should prefer this verified binding over third-party lookups.
+6. **Privacy/terms**: replace the draft pages with reviewed text that names what is stored (provider id,
+   handle, email) and how to delete it, before enabling any provider.
 
 ## 7. Verification (2026-11-03)
 
