@@ -14,13 +14,14 @@ import { feeVaultScreen } from './fee-vault.js';
 import { programsScreen } from './programs.js';
 import { advancedDiscover, advancedTokenScreen, advancedRewardsScreen } from './advanced-markets.js';
 import { welcomeScreen, legalScreen } from './welcome.js';
+import { advancedHub } from './advanced-hub.js';
 
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths = {
   programs:'M4 4h16v16H4Z M8 8h8M8 12h8M8 16h4',assets:'M4 5h16v14H4Z M8 9h8M8 13h5',
   discover:'M3 10l9-7 9 7v10H3Z M9 20v-7h6v7', create:'M12 5v14M5 12h14',
-  earnings:'M4 7h16v13H4ZM4 7V4h13v3M16 12h4v4h-4Z',guide:'M5 4h10a4 4 0 0 1 4 4v12H8a3 3 0 0 1-3-3ZM5 16h14',
+  earnings:'M4 7h16v13H4ZM4 7V4h13v3M16 12h4v4h-4Z',advanced:'M3 12h4l3-8 4 16 3-8h4',guide:'M5 4h10a4 4 0 0 1 4 4v12H8a3 3 0 0 1-3-3ZM5 16h14',
   search:'m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',sun:'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
   moon:'M20 15A9 9 0 0 1 9 3a9 9 0 1 0 11 12Z',close:'m6 6 12 12M6 18 18 6',people:'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 9v-2a6 6 0 0 1 12 0v2m2-16a4 4 0 0 1 0 8m1 3a5 5 0 0 1 3 5',
   plug:'M8 3v6m8-6v6M5 9h14v3a7 7 0 0 1-14 0Zm7 10v3',arrow:'M5 12h14m-5-5 5 5-5 5',back:'M19 12H5m5-5-5 5 5 5',trash:'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7',
@@ -44,6 +45,7 @@ const providers = new Map();
 const screenOptions={wallet:()=>({account,provider}),connect:()=>connect(),language:()=>lang,esc};
 const liveLaunch=launchScreen({...screenOptions,onConfirmed:()=>loadMarkets()});
 const advancedLaunch=advancedLaunchScreen({...screenOptions,onConfirmed:()=>loadMarkets()});
+const hub=advancedHub({...screenOptions,notify:message=>toast(message),launch:advancedLaunch});
 const liveTrading=tradingScreen(screenOptions),liveRewards=rewardsScreen(screenOptions),livePrograms=programsScreen(screenOptions);
 const liveVault=feeVaultScreen(screenOptions);
 const welcome=welcomeScreen({...screenOptions,t:(key,args)=>t(key,args)}),legal=legalScreen({t:(key,args)=>t(key,args),esc});
@@ -99,7 +101,7 @@ function usd(value) { const n=Number(value); return Number.isFinite(n)?new Intl.
 function empty(title, body, action = '', heading = 'h2') { return `<section class="empty">${icon('plug')}<${heading}>${esc(title)}</${heading}><p>${esc(body)}</p>${action}</section>`; }
 function nav() {
   const current = route()[0];
-  const html = ['discover','create','earnings','programs','assets','guide'].map(key => `<a class="nav-link" href="#${key}" ${current === key || ((current === 'token' || current === 'advanced-token') && key === 'discover') || (current === 'advanced' && key === 'create') ? 'aria-current="page"' : ''}>${icon(key)}${esc(t(key))}</a>`).join('');
+  const html = ['discover','create','advanced','earnings','programs','assets','guide'].map(key => `<a class="nav-link" href="#${key}" ${current === key || ((current === 'token' || current === 'advanced-token') && key === 'discover') ? 'aria-current="page"' : ''}>${icon(key)}${esc(t(key==='advanced'?'hub.title':key))}</a>`).join('');
   $('.desktop-nav').innerHTML = html; $('.mobile-nav').innerHTML = html;
   document.documentElement.lang = lang; document.documentElement.dir = direction(lang); document.documentElement.dataset.theme = theme;
   $('meta[name="theme-color"]').setAttribute('content',theme==='dark'?'#101713':'#f5f7f6');
@@ -305,9 +307,10 @@ function render() {
   const entry=['welcome','terms','privacy'].includes(page);
   document.body.dataset.route=entry?'welcome':'app';
   if(!entry){try{persist('plugged.welcomed',true);}catch{}}
-  if (page==='welcome') mountScreen(welcome,$('#main')); else if(page==='terms'||page==='privacy') mountScreen(legal,$('#main'),page); else if (page==='create') mountScreen(liveLaunch,$('#main')); else if(page==='advanced') mountScreen(advancedLaunch,$('#main')); else if(page==='planner') create(); else if(page==='earnings') mountScreen(liveEarnings,$('#main')); else if(page==='programs') mountScreen(livePrograms,$('#main')); else if(page==='assets') assetsView(); else if(page==='guide') guide(); else if(page==='token') tokenDetail(address); else if(page==='advanced-token') mountScreen(advancedToken,$('#main'),address); else discover();
+  if (page==='welcome') mountScreen(welcome,$('#main')); else if(page==='terms'||page==='privacy') mountScreen(legal,$('#main'),page); else if (page==='create') mountScreen(liveLaunch,$('#main')); else if(page==='advanced') mountScreen(hub,$('#main'),route().slice(1)); else if(page==='planner') create(); else if(page==='earnings') mountScreen(liveEarnings,$('#main')); else if(page==='programs') mountScreen(livePrograms,$('#main')); else if(page==='assets') assetsView(); else if(page==='guide') guide(); else if(page==='token') tokenDetail(address); else if(page==='advanced-token') mountScreen(advancedToken,$('#main'),address); else discover();
   if(entry)document.title=`${t(page==='welcome'?'welcome.signIn':page==='terms'?'legal.termsTitle':'legal.privacyTitle')} · Plugged`;
-  else if(page!=='token')document.title=`${t(page==='planner'?'plannerTitle':page==='advanced-token'?'advanced':['create','advanced','earnings','programs','assets','guide'].includes(page)?page:'discover')} · Plugged`;
+  else if(page==='advanced')document.title=`${t(route()[1]==='launch'?'advancedLaunch.advancedLaunch':'hub.title')} · Plugged`;
+  else if(page!=='token')document.title=`${t(page==='planner'?'plannerTitle':page==='advanced-token'?'advanced':['create','earnings','programs','assets','guide'].includes(page)?page:'discover')} · Plugged`;
 }
 async function connect(selected) {
   const dialog = $('#wallet-dialog');

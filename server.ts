@@ -24,6 +24,8 @@ import { ProgramService } from './lib/program-service.mjs';
 import { ProgramStore } from './lib/program-service-store.mjs';
 import { MediaService, MAX_MEDIA_BODY_BYTES, mediaErrorResponse } from './lib/media-service.mjs';
 import { assertProductionConfig, createJsonApi, HttpError, sendJson as json } from './lib/http-api.mjs';
+import { ActivityService } from './lib/activity-service.mjs';
+import { CalloutService } from './lib/callout-service.mjs';
 
 const files = new Map([['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/mark.svg', ['mark.svg', 'image/svg+xml']], ...LOCALE_CODES.filter(code => code !== 'en').map(code => [`/locales/${code}.js`, [`locales/${code}.js`, 'text/javascript']])]);
 const dist = new URL('./dist/', import.meta.url);
@@ -56,6 +58,13 @@ export function createPlatformServer(options: any = {}) {
     store: new ProgramStore(options.programDbPath ?? (process.env.PLUGGED_PROGRAMS_DB_PATH || launches().store.db)) });
   // A configured manifest must fail startup, rather than silently producing an empty UI.
   if (process.env.PLUGGED_PROGRAMS_MANIFEST || options.programManifest) programService();
+  // Advanced area: read-only chain activity for verified launches and wallet-signed callouts.
+  let activityService = options.activityService, calloutService = options.calloutService;
+  const activity = () => activityService ??= new ActivityService({ launchService: launches() });
+  const callouts = () => calloutService ??= new CalloutService({ db: launches().store.db, activity: activity(), client: () => launches().client,
+    verify: options.verifyMessage, mode: options.calloutMode ?? (process.env.PLUGGED_CALLOUTS || 'open'),
+    origin: options.publicOrigin ?? process.env.PLUGGED_PUBLIC_ORIGIN ?? 'http://localhost', now: options.now });
+  if (process.env.PLUGGED_CALLOUTS || options.calloutMode) callouts();
   const startedAt = new Date().toISOString();
   let draining = false, worker: ReturnType<typeof setInterval> | undefined;
   let reconciliation: Promise<void> | undefined, shutdownPromise: Promise<void> | undefined;
@@ -95,6 +104,8 @@ export function createPlatformServer(options: any = {}) {
       deployment: { runtime: 'pinned-carbon-baseline', independentProfileActivation: false },
       advanced: { implemented: true, engine: 'plugged-advanced-v1', profileConfigured: Boolean(options.advancedProfilePath ?? process.env.PLUGGED_ADVANCED_PROFILE), signingEnabled: launchEnabled, verification: 'per-request', status: '/api/advanced/config',
         markets: '/api/advanced/markets', trading: 'per-pool', rewards: ['sweep', 'release', 'recover-splitter', 'recover-feed'], holderLedgerClaims: false },
+      activity: { implemented: true, source: 'robinhood-rpc-logs', scope: 'confirmed-plugged-launches', endpoints: ['/api/activity/feed', '/api/activity/trades', '/api/activity/holders', '/api/activity/creator'] },
+      callouts: { implemented: true, mode: options.calloutMode ?? (process.env.PLUGGED_CALLOUTS || 'open'), signing: 'eip-191', links: false },
     }, productionReady: false, note: 'HTTP availability, operator flags and catalog snapshots do not establish live provider, deployment, hosting or backup readiness.' }));
   get('/api/pons-reference', () => ({ ...ponsReference, native: ponsReference.liveConfiguration.nativeQuote, assets: ponsReference.approvedAssets }));
   get('/api/markets', async () => { try { return await launches().markets(); } catch { throw new HttpError(503, 'Robinhood market source is unavailable. Retry shortly.'); } }, { limit: 30 });
@@ -142,6 +153,15 @@ export function createPlatformServer(options: any = {}) {
   post('/api/programs/submit', ({ input }: any) => { exact(input, ['id', 'txHash']); return programService().submit(input.id, input.txHash); });
   post('/api/programs/status', ({ input }: any) => { exact(input, ['id']); return programService().status(input.id); });
   post('/api/programs/voucher', ({ input }: any) => { gate(programsEnabled, 'Program'); return programService().voucher(input); }, { limit: 10 });
+  const chainRead = async (work: () => any) => { try { return await work(); } catch (error: any) { if (error instanceof HttpError) throw error; throw new HttpError(503, 'Robinhood activity source is unavailable. Retry shortly.'); } };
+  get('/api/activity/feed', () => chainRead(() => activity().feed()), { limit: 30 });
+  get('/api/activity/trades', ({ query }: any) => chainRead(() => activity().trades(query.get('address') ?? '')), { limit: 30 });
+  get('/api/activity/holders', ({ query }: any) => chainRead(() => activity().holders(query.get('address') ?? '')), { limit: 20 });
+  get('/api/activity/creator', ({ query }: any) => activity().creator(query.get('address') ?? ''), { limit: 30 });
+  get('/api/callouts', ({ query }: any) => callouts().list(query), { limit: 60 });
+  post('/api/callouts/challenge', ({ input }: any) => callouts().challenge(input), { limit: 6, dailyLimit: 60, maxBytes: 4000 });
+  post('/api/callouts/post', ({ input }: any) => callouts().post(input), { limit: 6, dailyLimit: 60, maxBytes: 24000 });
+  post('/api/callouts/report', ({ input, client }: any) => callouts().report(input, client), { limit: 10, dailyLimit: 50, maxBytes: 1000 });
   get('/api/media/status', () => media.status());
   post('/api/media/pin', async ({ input, req, res }: any) => {
     const controller = new AbortController();
@@ -235,7 +255,7 @@ export function createPlatformServer(options: any = {}) {
     })();
     return shutdownPromise;
   }
-  return { server, reconcile, startWorker, shutdown, services: { launches, trades, earnings, programs: programService, media, feeVault } };
+  return { server, reconcile, startWorker, shutdown, services: { launches, trades, earnings, programs: programService, media, feeVault, activity, callouts } };
 }
 
 const platform = createPlatformServer();

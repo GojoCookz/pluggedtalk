@@ -42,6 +42,7 @@ pipe launch timed out on 2026-11-03 while Node launched in 343 ms (measured).
 | ETH funding | LI.FI native-to-ERC20 route, calldata decoded and bound; **new:** output must be within 5% of the on-chain ETH/USDG v4 pool (USDG) or 1:1 (WETH) |
 | Trading | Quotes, exact approvals, buy/sell, replacement/cancel recovery with compare-and-set status writes |
 | Rewards, programs, fee vault, media, advanced launch | Service + UI connected with honest "unavailable" states; nothing deployed, so they fail closed |
+| Advanced tab (`#advanced`) | **New 2026-11-05** (`workstreams/pumpfun-comparison.md`): live new-launch feed, trades tape and "Most active" from Robinhood RPC logs; coin pages (`#advanced/coin/<token>`) with price per swap, trades, holder distribution, wallet-signed callouts and a local price alert; creator profiles; local watchlist; the advanced launch form moved to `#advanced/launch`. Data only exists for confirmed Plugged launches, so the preview shows empty states today |
 | UI | Light/dark, 13 languages (see `workstreams/i18n.md`), 0 AccessLint findings on 13 audited states, mobile 390 px |
 | Ops | systemd units (hardened), Caddy, backup/restore drill, preflight, health probe |
 
@@ -67,6 +68,7 @@ Copy `.env.example` to `.env` for local use; production uses `ops/service.env.ex
 | `PLUGGED_PINATA_JWT` | server-only image pinning; blank disables uploads |
 | `BAGS_API_KEY`, `PLUGGED_SOCIAL_RECEIPT_SECRET` | social onboarding (optional) |
 | `PLUGGED_BACKUP_DIR` | private directory for the backup job |
+| `PLUGGED_CALLOUTS` | `open` (default), `premoderated`, `readonly` or `off`. Moderate with `bun tools/callouts-moderate.mjs list\|hide\|show` (no HTTP admin route) |
 
 The server never needs or accepts a wallet private key. Users sign in their own wallets.
 
