@@ -11,7 +11,10 @@ const temp = await mkdtemp(join(tmpdir(), 'plugged-entry-smoke-'));
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|TMPDIR|HOME|USERPROFILE|APPDATA|LOCALAPPDATA)$/i.test(key)));
 const results = [];
 try {
-  for (const entry of ['server.ts', 'server.bundle.js']) {
+  // Production currently runs the TypeScript entrypoint directly. Keep this
+  // smoke test aligned with the build output; the browser bundle is emitted
+  // under dist/ and is not a server entrypoint.
+  for (const entry of ['server.ts']) {
     const reservation = createServer();
     await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
     const port = reservation.address().port;
